@@ -33,6 +33,16 @@
 
  */
 
+ /* maybe useful:
+ * Optional SD Card connections:
+ *   MISO => GPIO 16  (2 for PICO-D4)
+ *   MOSI => GPIO 17  (12 for PICO-D4)
+ *   CLK  => GPIO 14
+ *   CS   => GPIO 13
+ *
+ * To change above assignment fill other paramaters of FileBrowser::mountSDCard().
+ */
+
 #include "inputbox.h"
 
 
@@ -55,6 +65,14 @@ extern "C" {
 
 #include "mconf.h"
 #include "machine.h"
+
+#include <iostream>
+#include <string>
+
+FileBrowser fb(SD_MOUNT_PATH);
+
+#define SPIFFS_MOUNT_PATH  "/flash"
+#define FORMAT_ON_FAIL     true
 
 using std::unique_ptr;
 using fabgl::StringList;
@@ -88,8 +106,16 @@ IPAddress apIP(192, 168, 1, 1);
 DNSServer dnsServer;
 WebServer server(80);
 
-const char* filename = "/posts.txt";
+const char* filename2 = "/posts.txt";
 
+
+// for the app JPGView():
+#include <TJpg_Decoder.h>
+#include <FS.h>
+#include "SPIFFS.h" // ESP32 only
+fabgl::VGA16Controller VGAController;
+//fabgl::VGAController VGAController; // dont show the complete image .jpg
+fabgl::Canvas cv(&VGAController);
 
 
 
@@ -296,7 +322,7 @@ bool downloadURL(char const * URL, FILE * file)
 // return filename if successfully downloaded or already exist
 char const * getDisk(char const * url)
 {
-  FileBrowser fb(SD_MOUNT_PATH);
+  //FileBrowser fb(SD_MOUNT_PATH);
 
   char const * filename = nullptr;
   if (url) {
@@ -378,7 +404,7 @@ void sendPage(){
 
 void sendMessages(){
   Serial.println("GET /posts");
-  File file = SPIFFS.open(filename, FILE_READ);
+  File file = SPIFFS.open(filename2, FILE_READ);
   if(!file){
       Serial.println("- failed to open file for reading");
   }
@@ -395,7 +421,7 @@ void receiveMessage(){
     Serial.println("zero args?");
   }
   
-  File file = SPIFFS.open(filename, FILE_APPEND);
+  File file = SPIFFS.open(filename2, FILE_APPEND);
   if(!file){
       Serial.println("- failed to open file for writing");
   }
@@ -412,6 +438,147 @@ void receiveMessage(){
   server.send(200,"text.plain","");
 }
 
+
+
+// for the app JPGView():
+void writePixel(int16_t x, int16_t y, uint16_t rgb565) 
+{
+  uint8_t r = ((rgb565 >> 11) & 0x1F) * 255 / 31;   // red   0 .. 255
+  uint8_t g = ((rgb565 >> 5) & 0x3F) * 255 / 63.0;  // green 0 .. 255
+  uint8_t b = (rgb565 & 0x1F) * 255 / 31.0;         // blue  0 .. 255
+  cv.setPixel(x, y, RGB888(r, g, b));
+}
+
+// This next function will be called during decoding of the jpeg file to
+// render each block to the Canvas.
+bool vga_output(int16_t x, int16_t y, uint16_t w, uint16_t h, uint16_t* bitmap) {
+  // Stop further decoding as image is running off bottom of screen
+  if ( y >= cv.getHeight() ) return 0;
+
+  for (int16_t j = 0; j < h; j++, y++) {
+    for (int16_t i = 0; i < w; i++) {
+      writePixel(x + i, y, bitmap[j * w + i]);
+    }
+  }
+
+  // Return 1 to decode next block
+  return 1;
+}
+
+// show image jpg
+// code by https://github.com/fdivitto/FabGL/discussions/160#discussioncomment-1423074
+void ShowJPG(char * filename)
+{
+  Serial.print("filename: ");
+  Serial.println(filename);
+  fabgl::BitmappedDisplayController::queueSize = 1024; // deixou mais rápido, com mais 10 = extremamente lento (e não resolveu d mostrar tudo)
+  //cv.waitCompletion(false);
+  //cv.endUpdate();
+  //cv.reset(); // pane com o de baixo
+  //cv.resetPaintOptions(); // pane
+  ibox.end();
+  VGAController.begin();
+  //VGAController.setResolution(VGA_640x480_60Hz, 512, 300);
+  //VGAController.setResolution(VGA_512x300_60Hz);
+  //VGAController.setResolution(VGA_400x300_60Hz);
+  //VGAController.setResolution(VGA_512x384_60Hz, 512, 300);
+  VGAController.setResolution(VGA_512x384_60Hz); // my monitor resolution is 1024 x 600
+  VGAController.setProcessPrimitivesOnBlank(true);
+  cv.setBrushColor(RGB888(0, 0, 0));
+  cv.clear();
+  //Serial.print("ho");
+  // The jpeg image can be scaled by a factor of 1, 2, 4, or 8
+  TJpgDec.setJpgScale(1);
+  //Serial.print("directory: ");
+  //Serial.println(directory); //'directory' was not declared in this scope
+  // The decoder must be given the exact name of the rendering function above
+  TJpgDec.setCallback(vga_output);
+  // Time recorded for test purposes
+  uint32_t t = millis();
+  //Serial.print("hiy3");
+  // Get the width and height in pixels of the jpeg if you wish
+  uint16_t w = 0, h = 0;
+  //strcpy(filename, filename2);
+  //auto file = fb.openFile(filename, "wb");
+  //strcpy(file, filename);
+  //filename = std::to_string(file); //'to_string' is not a member of 'std'
+  //filename = to_string(file);   'to_string' was not declared in this scope
+  //TJpgDec.drawSdJpg(0, 0, filename);
+  //fclose(file);
+  //TJpgDec.getSdJpgSize(&w, &h, filename2); // Note name preceded with "/"
+
+  //Resize if possible: (down scale...)
+    TJpgDec.getFsJpgSize(&w, &h, String("/")+filename);
+  Serial.print("Width = "); Serial.print(w); Serial.print(", height = "); Serial.println(h);
+  /* if (w < 320 and h < 240)
+    {
+    TJpgDec.setJpgScale(2);
+    }
+  else 
+    TJpgDec.setJpgScale(1); */
+    
+  /* Resize if possible: (640x480)
+  if (w > 5120 or h > 3840) 
+    TJpgDec.setJpgScale(8);
+  else if (w > 2560 or h > 1920)
+    TJpgDec.setJpgScale(4);
+  else if (w > 640 or h > 480)
+    TJpgDec.setJpgScale(2);
+  else 
+    TJpgDec.setJpgScale(1);  */
+
+  //Resize if possible: (512x300) // (for my monitor...)
+  //if (w > 4096 or h > 2400) 
+  if (w > 4301 or h > 2520) // crop 5%
+    TJpgDec.setJpgScale(8);
+  //if (w > 2048 or h > 1200)
+  if (w > 2150 or h > 1260) //crop 5%
+    //TJpgDec.setJpgScale(8);
+    TJpgDec.setJpgScale(4);
+  //else if (w > 2048 or h > 1200)
+  //else if (w > 1024 or h > 600)
+  else if (w > 1075 or h > 630) //crop 5%
+    //TJpgDec.setJpgScale(4);
+    TJpgDec.setJpgScale(2);
+  //else if (w > 1024 or h > 600)
+  //else if (w > 512 or h > 300)
+  //else if (w > 538 or h > 315) //crop 5%
+  //  TJpgDec.setJpgScale(2);
+  else 
+    TJpgDec.setJpgScale(1); 
+
+  
+  // Draw the image, top left at 0,0
+  //TJpgDec.drawFsJpg(0, 0, filename); //file not found
+  //TJpgDec.drawFsJpg(0, 0, "/panda.jpg"); // Ok
+  //filename = "/" + filename; invalid operands of types 'const char [2]' and 'char*' to binary 'operator+'
+  //filename = "/" += filename; invalid operands of types 'const char [2]' and 'char*' to binary 'operator+'
+  //filename = '/' + filename;  dont work
+  Serial.print("filename: ");
+  Serial.println(filename);
+  TJpgDec.drawFsJpg(0, 0, String("/")+filename); 
+  //TJpgDec.drawSdJpg(0, 0, filename);  //file not found
+  //TJpgDec.drawSdJpg(0, 0, "/moto.jpg"); //file not found
+  //TJpgDec.drawSdJpg(0, 0, "SD/moto.jpg"); //file not found
+  //TJpgDec.drawSdJpg(0, 0, "/SD/moto.jpg"); //file not found
+  //TJpgDec.drawSdJpg(0, 0, "moto.jpg"); //file not found
+  //TJpgDec.drawSdJpg(0, 0, "/panda.jpg".c_str());  // Jpeg file not found request for member 'c_str' in '"/panda.jpg"', which is of non-class type 'const char [11]'
+  //TJpgDec.drawSdJpg(0, 0, "/moto.jpg"); //Jpeg file not found
+  //TJpgDec.drawSdJpg(0, 0, "/moto.jpg"); // Jpeg file not found
+  
+  // How much time did rendering take
+  t = millis() - t;
+  Serial.print(t); Serial.println(" ms");
+
+  // take a keypress
+  int scode = PS2Controller::keyboard()->getNextScancode();
+
+  // now user can choice another app:
+  esp_restart();
+   /*while (1){
+    t = millis();
+  } */
+}
 
 
 
@@ -568,10 +735,10 @@ while (1)
 void ChatterBox()
 {
   // initialize file (not totally sure this is necessary but YOLO)
-  File file = SPIFFS.open(filename, FILE_READ);
+  File file = SPIFFS.open(filename2, FILE_READ);
   if(!file){
       file.close();
-      File file_write = SPIFFS.open(filename, FILE_WRITE);
+      File file_write = SPIFFS.open(filename2, FILE_WRITE);
       if(!file_write){
           Serial.println("- failed to create file?!?");
       }
@@ -610,7 +777,14 @@ void ChatterBox()
   //ib.setBackgroundColor(RGB888(0, 0, 0));
   //ib.onPaint = [&](Canvas * canvas) { drawInfo(canvas); };
   //ib.setAutoOK(0);
-  ibox.message("Status","ChatterBox Started!"); 
+  //dnsServer.processNextRequest();
+  //server.handleClient();
+  //IPAddress IP = WiFi.softAPIP();
+  //char capIP[16] = "";
+  //strcpy(capIP, String(apIP));
+  //char IP2[16] = "";
+  //strcpy(IP2, String(IP));
+  ibox.message("Status","ChatterBox Started! Click 'Enter'.",WiFi.softAPIP().toString().c_str(),WiFi.localIP().toString().c_str()); 
   //ib.messageFmt("", nullptr," ", "ChatterBox Started!");
 
 
@@ -626,9 +800,48 @@ void ChatterBox()
 
 
 
+
+// App JPG View
+void JPGView()
+{
+
+  // Browse Files
+  //ibox.folderBrowser("Browse Files", SD_MOUNT_PATH);
+  //break;
+  ////////////////////////////////////////////////////
+  // File Select
+  if (SPIFFS_MOUNT_PATH) {
+    char filename[16] = "/";
+    //String filename;
+    char directory[32];
+    strcpy(directory, SPIFFS_MOUNT_PATH);
+    if (ibox.fileSelector("File Select", "Filename: ", directory, sizeof(directory) - 1, filename, sizeof(filename) - 1) == InputResult::Enter) {
+    //if (ibox.fileSelector("File Select", "Filename: ", directory, sizeof(directory) - 1, filename, sizeof(filename)) == InputResult::Enter) {
+      //directory += filename;   - invalid use of non-lvalue array
+      Serial.print("directory: ");
+      Serial.println(directory);
+      //filename = "/" + filename;  //invalid use of non-lvalue array
+      //'/' += filename; invalid use of non-lvalue array
+      //filename[16] = "/" + filename; invalid operands of types 'const char [2]' and 'char [16]' to binary 'operator+'
+      //filename[16] = "/" += filename; invalid use of non-lvalue array
+      Serial.print("filename: ");
+      Serial.println(filename);
+      ShowJPG(filename);
+      //delay(2000);
+    }
+        
+  //Serial.print("hi");
+  }
+}
+
+
+
+
+
+
 void setup()
 {
-  Serial.begin(115200); delay(500); printf("\n\n\nReset\n\n");// DEBUG ONLY
+  Serial.begin(115200); delay(500); printf("\n\n\nStart\n\n");// DEBUG ONLY
 
   disableCore0WDT();
   delay(100); // experienced crashes without this delay!
@@ -655,14 +868,15 @@ void setup()
 
   esp_register_shutdown_handler(shutdownHandler);
 
-  updateDateTime();
+  //updateDateTime();
 
 
-  // For App chatterbox:
-  if(!SPIFFS.begin(FORMAT_SPIFFS_IF_FAILED)){
+  // Initialise SPIFFS:
+  if(!SPIFFS.begin(FORMAT_SPIFFS_IF_FAILED,SPIFFS_MOUNT_PATH)){
     Serial.println("SPIFFS Mount Failed");
     return;
-  }
+  } 
+  FileBrowser::mountSPIFFS(FORMAT_ON_FAIL, SPIFFS_MOUNT_PATH);
 
 }
 
@@ -691,11 +905,13 @@ void loop()
     //for (auto conf = mconf.getFirstItem(); conf; conf = conf->next)
     //  dconfs.append(conf->desc);
     //dconfs.select(idx, true);
-
+  ibox.setAutoOK(0);
   ibox.setupButton(0, "PCEmulator");
   ibox.setupButton(1, "ChatterBox");
-  auto r = ibox.select("Applications list", "Please select a application", &dconfs, nullptr, " ");
-
+  ibox.setupButton(2, "JPG View");
+  ibox.setupButton(3, "Update time");
+  //auto r = ibox.select("Applications list", "Please select a application", &dconfs, nullptr, " ");
+  auto r = ibox.select("Applications list", "Please select a application", &dconfs, nullptr, nullptr);
     idx = dconfs.getFirstSelected();
 
     switch (r) {
@@ -706,6 +922,14 @@ void loop()
       case InputResult::ButtonExt1:
         // App ChatterBox
         ChatterBox();
+        break;
+      case InputResult::ButtonExt2:
+        // App JPG View
+        JPGView();
+        break;
+      case InputResult::ButtonExt3:
+        // conect to internet and update date/time
+        updateDateTime();
         break;
       case InputResult::Enter:
         showDialog = false;
