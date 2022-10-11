@@ -6,7 +6,7 @@ Release 0.3:
 Original code: https://github.com/fdivitto/FabGL/discussions/160#discussioncomment-1423074
 
 (Alternatively you can view .gif images in 4 colors and 320x200 using the 'Compushow' application available on the HD-Geral disk image, by PCEmulator: https://drive.google.com/file/d/1sEvAZ998l3wTq4KzkuHQPrPWqZv5kday/view?usp= sharing
-I recommend 1st converting the image using the GIMP application with indexed mode, 'generate optimum pallete maximum colors 4', 'color dithering Floyd-Steinberg', 'interlace'.)
+I recommend 1st converting the image using the GIMP application with scale image/canvas to fit in 320x200, sharpen filter, indexed mode: 'generate optimum pallete maximum colors 4', 'color dithering Floyd-Steinberg Reduced'.)
 
 -- App ChatterBox: Horizontal chat room server (connects to a network and opens an AP to receive connections). This application can be used even if the Esp32 is not connected to a video monitor. Just repeat the keys used to activate it.
 Original code: https://github.com/fenwick67/esp32-chatterbox
