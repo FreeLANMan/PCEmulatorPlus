@@ -44,7 +44,7 @@
  */
 
 #include "inputbox.h"
-
+//#include "fabui.h"
 
 #pragma message "This sketch requires Tools->Partition Scheme = Huge APP"
 
@@ -69,7 +69,9 @@ extern "C" {
 #include <iostream>
 #include <string>
 
-FileBrowser fb(SD_MOUNT_PATH);
+FileBrowser fb("/");
+
+// #define SD_MOUNT_PATH "/SD"
 
 #define SPIFFS_MOUNT_PATH  "/flash"
 #define FORMAT_ON_FAIL     true
@@ -322,7 +324,7 @@ bool downloadURL(char const * URL, FILE * file)
 // return filename if successfully downloaded or already exist
 char const * getDisk(char const * url)
 {
-  //FileBrowser fb(SD_MOUNT_PATH);
+  FileBrowser fb(SD_MOUNT_PATH);
 
   char const * filename = nullptr;
   if (url) {
@@ -469,6 +471,13 @@ bool vga_output(int16_t x, int16_t y, uint16_t w, uint16_t h, uint16_t* bitmap) 
 // code by https://github.com/fdivitto/FabGL/discussions/160#discussioncomment-1423074
 void ShowJPG(char * filename)
 {
+
+  //Initialise SPIFFS:
+  if(!SPIFFS.begin()){
+    Serial.println("SPIFFS Mount Failed");
+    return;
+  }  
+    
   Serial.print("filename: ");
   Serial.println(filename);
   fabgl::BitmappedDisplayController::queueSize = 1024; // deixou mais rápido, com mais 10 = extremamente lento (e não resolveu d mostrar tudo)
@@ -508,6 +517,7 @@ void ShowJPG(char * filename)
   //TJpgDec.getSdJpgSize(&w, &h, filename2); // Note name preceded with "/"
 
   //Resize if possible: (down scale...)
+  
     TJpgDec.getFsJpgSize(&w, &h, String("/")+filename);
   Serial.print("Width = "); Serial.print(w); Serial.print(", height = "); Serial.println(h);
   /* if (w < 320 and h < 240)
@@ -734,6 +744,14 @@ while (1)
 
 void ChatterBox()
 {
+  // the app use another way so:
+  //SPIFFS.end();
+  
+  //Initialise SPIFFS:
+    if(!SPIFFS.begin()){
+      Serial.println("SPIFFS Mount Failed");
+      return;
+    }
   // initialize file (not totally sure this is necessary but YOLO)
   File file = SPIFFS.open(filename2, FILE_READ);
   if(!file){
@@ -804,7 +822,7 @@ void ChatterBox()
 // App JPG View
 void JPGView()
 {
-
+  FileBrowser::mountSPIFFS(FORMAT_ON_FAIL, SPIFFS_MOUNT_PATH);
   // Browse Files
   //ibox.folderBrowser("Browse Files", SD_MOUNT_PATH);
   //break;
@@ -826,6 +844,10 @@ void JPGView()
       //filename[16] = "/" += filename; invalid use of non-lvalue array
       Serial.print("filename: ");
       Serial.println(filename);
+
+      // the lib use another way so:
+      SPIFFS.end();
+      
       ShowJPG(filename);
       //delay(2000);
     }
@@ -861,7 +883,7 @@ void setup()
   ibox.onPaint = [&](Canvas * canvas) { drawInfo(canvas); };
 
   if (!FileBrowser::mountSDCard(false, SD_MOUNT_PATH, 8))   // @TODO: reduce to 4?
-    ibox.message("Error!", "This app requires a SD-CARD!", nullptr, nullptr);
+    ibox.message("Error!", "This app requires a SD-CARD!", nullptr, nullptr); 
 
   // uncomment to format SD!
   //FileBrowser::format(fabgl::DriveType::SDCard, 0);
@@ -869,14 +891,6 @@ void setup()
   esp_register_shutdown_handler(shutdownHandler);
 
   //updateDateTime();
-
-
-  // Initialise SPIFFS:
-  if(!SPIFFS.begin(FORMAT_SPIFFS_IF_FAILED,SPIFFS_MOUNT_PATH)){
-    Serial.println("SPIFFS Mount Failed");
-    return;
-  } 
-  FileBrowser::mountSPIFFS(FORMAT_ON_FAIL, SPIFFS_MOUNT_PATH);
 
 }
 
@@ -896,25 +910,76 @@ void loop()
 
   // Apps Menu
 
-  ibox.setAutoOK(6);
-  int idx = preferences.getInt("dconf", 0);
+  //ibox.setAutoOK(6);
+  //int idx = preferences.getInt("dconf", 0);
 
-  for (bool showDialog = true; showDialog; ) {
+  //for (bool showDialog = true; showDialog; ) {
 
-    StringList dconfs;
+    //StringList dconfs;
     //for (auto conf = mconf.getFirstItem(); conf; conf = conf->next)
     //  dconfs.append(conf->desc);
     //dconfs.select(idx, true);
-  ibox.setAutoOK(0);
+  /*ibox.setAutoOK(0);
   ibox.setupButton(0, "PCEmulator");
   ibox.setupButton(1, "ChatterBox");
   ibox.setupButton(2, "JPG View");
   ibox.setupButton(3, "Update time");
+  ibox.setupButton(4, "File Browser");
+  
   //auto r = ibox.select("Applications list", "Please select a application", &dconfs, nullptr, " ");
   auto r = ibox.select("Applications list", "Please select a application", &dconfs, nullptr, nullptr);
-    idx = dconfs.getFirstSelected();
+    idx = dconfs.getFirstSelected(); */
 
-    switch (r) {
+
+  // Example of simple menu (items from StringList)
+  Serial.println("string list");
+  fabgl::StringList list;
+  list.append("PCEmulator"); //0
+  list.append("ChatterBox");
+  list.append("File Browser");
+  list.append("Update time");
+  list.append("JPG View");
+  list.select(1, true);
+  //int s = ibox.menu("Applications list", "Click on an item", &list);
+  int s = ibox.menu("Applications list", ".", &list);
+  if (s == 0) PCEmulator();
+  if (s == 1) {
+    //Initialise SPIFFS:
+    if(!SPIFFS.begin()){
+      Serial.println("SPIFFS Mount Failed");
+      return;
+    }  
+    ChatterBox();
+  }
+  if (s == 2) {
+    //rootWindow()->frameStyle().backgroundColor = RGB888(0, 0, 64);
+    //auto frame = new uiFrame(rootWindow(), "FileBrowser Example", Point(15, 10), Size(375, 275));
+    //frame->frameProps().hasCloseButton = false;
+    //fb = new uiFileBrowser(frame, Point(10, 25), Size(140, 180));
+    //fb->setDirectory("/");
+    FileBrowser::mountSPIFFS(FORMAT_ON_FAIL, SPIFFS_MOUNT_PATH);
+    ibox.folderBrowser("Browse Files", "/");
+    //ibox.folderBrowser("Browse Files", SPIFFS_MOUNT_PATH);
+    //ibox.folderBrowser("Browse Files", SD_MOUNT_PATH);
+  }
+  if (s == 3) updateDateTime();
+  if (s == 4) {
+    JPGView();
+  }
+  //if (s == 5) 
+  //if (s == 6) 
+  //if (s == 7) 
+  //if (s == 8) 
+  //if (s == 9) 
+  Serial.println("string list ok");
+  //delay(1000);
+  //ibox.messageFmt("", nullptr, "OK", "You have selected item %d", s);
+
+
+
+
+
+   /* switch (r) {
       case InputResult::ButtonExt0:
         // App PCEMulator
         PCEmulator();
@@ -931,6 +996,11 @@ void loop()
         // conect to internet and update date/time
         updateDateTime();
         break;
+      //case InputResult::ButtonExt4:
+        // File Browser
+      //  fileBrowser = new uiFileBrowser(frame, Point(10, 25), Size(140, 180));
+      //  fileBrowser->setDirectory("/");
+      //  break;
       case InputResult::Enter:
         showDialog = false;
         break;
@@ -938,7 +1008,7 @@ void loop()
         break;
     }
     // next selection will not have timeout
-    ibox.setAutoOK(0);
-  }
-  
+    ibox.setAutoOK(0); 
+  // }
+  */
 }
