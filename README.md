@@ -10,6 +10,7 @@ Original code: https://github.com/fenwick67/esp32-chatterbox
 
 -- App JPG View: Only .jpg files on internal memory (SPIFFS). Only files with <1Mb for now. Only 512x384 pixels visible (can be change in the code)
 Original code: https://github.com/fdivitto/FabGL/discussions/160#discussioncomment-1423074
+Recomnded: Use the Hercules mode and convert the imagens to see in 'Compushow' or VUIMG.
 (Alternatively you can view .gif images in 4 colors and 320x200 using the 'Compushow' application available on the HD-Geral disk image, by PCEmulator: https://drive.google.com/file/d/1sEvAZ998l3wTq4KzkuHQPrPWqZv5kday/view?usp= sharing
 I recommend 1st converting the image using the GIMP application with scale image/canvas to fit in 320x200, sharpen filter, indexed mode: 'generate optimum pallete maximum colors 4', 'color dithering Floyd-Steinberg Reduced'.)
 
@@ -25,3 +26,6 @@ Board arduino-esp32 by espressif version 1.0.6 https://github.com/espressif/ardu
 
 "O sketch usa 1558458 bytes (49%) de espaço de armazenamento para programas. O máximo são 3145728 bytes.
 Variáveis globais usam 55616 bytes (16%) de memória dinâmica, deixando 272064 bytes para variáveis locais. O máximo são 327680 bytes."
+
+Disks for the PCEmulator:
+https://drive.google.com/drive/folders/1OFRNx3wDCHZ4ajmrT9v_o90OhCe7HoOJ?usp=share_link
