@@ -76,6 +76,9 @@ FileBrowser fb("/");
 #define SPIFFS_MOUNT_PATH  "/flash"
 #define FORMAT_ON_FAIL     true
 
+#define WIFI_DELAY        500 // Delay paramter for connection.
+#define MAX_CONNECT_TIME  10000 // Wait this much until device gets IP. 
+
 using std::unique_ptr;
 using fabgl::StringList;
 using fabgl::imin;
@@ -91,6 +94,7 @@ __NOINIT_ATTR static timeval savedTimeValue;
 static bool wifiConnected = false;
 static bool downloadOK    = false;
 
+bool hasSD = true; // tem microSD?
 
 
 // For App chatterbox
@@ -113,18 +117,68 @@ const char* filename2 = "/posts.txt";
 
 // for the app JPGView():
 #include <TJpg_Decoder.h>
-#include <FS.h>
-#include "SPIFFS.h" // ESP32 only
+//#include <FS.h>
+//#include "SPIFFS.h" // ESP32 only
 fabgl::VGA16Controller VGAController;
 //fabgl::VGAController VGAController; // dont show the complete image .jpg
 fabgl::Canvas cv(&VGAController);
 
+
+// For App Web Radios
+#include <Arduino.h>
+#include "Audio.h"
+//#include <Preferences.h> 
+//#include <WiFi.h>
+//#include <SPI.h>
+
+//Preferences pref;
+//Audio audio(true, I2S_DAC_CHANNEL_RIGHT_EN);
+//Audio audio(true, 1, 0); // OK!
+//Audio audio(true, 0, 0);
+// Audio audio;  // no sound
+
+  uint8_t max_volume   = 21;
+ // uint8_t max_stations = 0;   //will be set later
+ // uint8_t cur_station  = 0;   //current station(nr), will be set later
+  uint8_t cur_volume   = 0;   //will be set from stored preferences
+  
+
+
+// For app Web Radios
+void audio_info(const char *info){
+    Serial.print("audio_info: "); Serial.println(info);
+}
+void audio_showstation(const char *info){
+    //write_stationName(String(info));
+}
+void audio_showstreamtitle(const char *info){
+    String sinfo=String(info);
+    sinfo.replace("|", "\n");
+    //write_streamTitle(sinfo);
+}
+void audio_eof_speech(const char *info){
+    Serial.print("eof_speech  ");Serial.println(info);
+}
+/* void StationPick() {
+  char name[32] = "";
+  if (ibox.textInput("Asking station", "What's station number?", name, 31) == InputResult::Enter)
+    cur_station = atoi(name);
+  if (cur_station == 1) {
+    audio.connecttospeech("Gaúcha, Brasil.", "br");
+    
+  }
+} */
+
+
+  
 
 
 
 // try to connected using saved parameters
 bool tryToConnect()
 {
+  Serial.println("tryToConnect Start");
+  WiFi.setSleep(false);
   bool connected = WiFi.status() == WL_CONNECTED;
   if (!connected) {
     char SSID[32] = "";
@@ -154,6 +208,7 @@ bool tryToConnect()
 
 bool checkWiFi()
 {
+  Serial.println("checkWiFi Start");
   wifiConnected = tryToConnect();
   if (!wifiConnected) {
 
@@ -279,6 +334,7 @@ void updateDateTime()
 // download specified filename from URL
 bool downloadURL(char const * URL, FILE * file)
 {
+  Serial.println("downloadURL start");
   downloadOK = false;
 
   char const * filename = strrchr(URL, '/') + 1;
@@ -324,14 +380,20 @@ bool downloadURL(char const * URL, FILE * file)
 // return filename if successfully downloaded or already exist
 char const * getDisk(char const * url)
 {
-  FileBrowser fb(SD_MOUNT_PATH);
-
+  Serial.println("getDisk start");
+  //FileBrowser fb(SD_MOUNT_PATH);
+  FileBrowser fb("/SD");
+  
   char const * filename = nullptr;
+  //Serial.println(url);
   if (url) {
-    if (strncmp("://", url + 4, 3) == 0) {
+    if (strncmp("://", url + 4, 3) == 0) { // only http not https
+      //Serial.println("Sim");
       // this is actually an URL
       filename = strrchr(url, '/') + 1;
+      //Serial.println(filename);
       if (filename && !fb.exists(filename, false)) {
+        //Serial.println("Sim tamb.");
         // disk doesn't exist, try to download
         if (!checkWiFi())
           return nullptr;
@@ -345,10 +407,13 @@ char const * getDisk(char const * url)
       }
     } else {
       // this is just a file
-      if (fb.filePathExists(url))
+      if (fb.filePathExists(url)) {
+        //Serial.println("Sim tamb. isso");
         filename = url;
+      }
     }
   }
+  Serial.println("getDisk end");
   return filename;
 }
 
@@ -557,7 +622,6 @@ void ShowJPG(char * filename)
   else 
     TJpgDec.setJpgScale(1); 
 
-  
   // Draw the image, top left at 0,0
   //TJpgDec.drawFsJpg(0, 0, filename); //file not found
   //TJpgDec.drawFsJpg(0, 0, "/panda.jpg"); // Ok
@@ -592,10 +656,58 @@ void ShowJPG(char * filename)
 
 
 
+// For app File Download
+// download from URL. Filename is the last part of the URL
+void download(char const * URL) {
+  tryToConnect();
+  char const * slashPos = strrchr(URL, '/');
+  if (slashPos) {
+    char filename[slashPos - URL + 1];
+    strcpy(filename, slashPos + 1);
+
+    HTTPClient http;
+    http.begin(URL);
+    int httpCode = http.GET();
+    if (httpCode == HTTP_CODE_OK) {
+
+      //int fullpathLen = fileBrowser->content().getFullPath(filename);
+      int fullpathLen = 1;
+      char fullpath[fullpathLen];
+      //fileBrowser->content().getFullPath(filename, fullpath, fullpathLen);
+      FILE * f = fopen(fullpath, "wb");
+
+      int len = http.getSize();
+      uint8_t buf[128] = { 0 };
+      WiFiClient * stream = http.getStreamPtr();
+      while (http.connected() && (len > 0 || len == -1)) {
+        size_t size = stream->available();
+        if (size) {
+          int c = stream->readBytes(buf, fabgl::imin(sizeof(buf), (int) size));
+          fwrite(buf, c, 1, f);
+          if (len > 0)
+            len -= c;
+        }
+      }
+
+      fclose(f);
+
+      //updateBrowser();
+    }
+  }
+} 
+
+
+
+
+
 
 // App PCEmulator code
 void PCEmulator()
 {
+
+  // try to start SD
+  /* if (!FileBrowser::mountSDCard(false, SD_MOUNT_PATH, 8))   // @TODO: reduce to 4?
+    ibox.message("Error!", "This app requires a SD-CARD!", nullptr, nullptr); */
 
   // try to turn off the wifi
   WiFi.mode(WIFI_OFF);
@@ -742,6 +854,8 @@ while (1)
 
 
 
+
+
 void ChatterBox()
 {
   // the app use another way so:
@@ -858,12 +972,440 @@ void JPGView()
 
 
 
+// App WebBrowser, no, download file now.
+void DownloadFile() {
+  // download file button
+  //auto downloadBtn = new uiButton(frame, "Download", Point(260, 50), Size(90, 20));
+  //downloadBtn->onClick = [=]() {
+  //char URL[128] = "http://";
+  // 'https' don't work.
+  char URL[228] = "http://d32ogoqmya1dw8.cloudfront.net/files/teaching_computation/workshop_2018/activities/plain_text_version_declaration_inde.txt";
+  //char URL[228] = "https://www.w3.org/services/html2txt?url=https%3A%2F%2Fg1.globo.com%2F&noinlinerefs=on&nonums=on";
+  auto r = ibox.textInput("Download File", "URL", URL, sizeof(URL), "Cancel", "OK",false);
+  switch (r) {
+    case InputResult::ButtonExt1:
+    Serial.println(URL);
+    getDisk(URL);
+    break;
+    case InputResult::Enter:
+    Serial.println(URL);
+    char const * filename = getDisk(URL);
+    Serial.println(filename);
+    //readFile(SD, filename);
+    break;
+  }
+      //updateFreeSpaceLabel();
+   
+}
+
+
+
+void WifiSafe() { // app Wi-Fi Seguro
+  Serial.println("App Wi-fi seguro iniciado");
+  int senhaDesconhecida = 1;
+  byte RedeSelecionada = 0;
+  String RedeAlvo = " ";
+  //String redes[] { " ", " ", " ", " "};
+  //char SSID[32] = "";
+  //char psw[32]  = "";
+  //while (senhaDesconhecida == 1) {
+
+  // try to start SD
+  /* if (!FileBrowser::mountSDCard(false, SD_MOUNT_PATH, 8))   // @TODO: reduce to 4?
+    ibox.message("Error!", "This app requires a SD-CARD!", nullptr, nullptr); */
+
+    // Encontrar as redes de Wi-Fi
+    //WiFi.disconnect(); //disconecta da rede em que está (se está em alguma)
+    //scanAndSort2(); //função que scaneia e classifica as redes com senhas
+    //delay(WIFI_DELAY);
+
+    //Escolha da rede
+    int n = WiFi.scanNetworks(); // escaneia e analiza as redes disponíveis
+    Serial.print(n);
+    if (n == 0) {
+      Serial.println("no networks found");
+      ibox.message("Error!", "No networks found!");
+    } 
+    /* else {
+      Serial.print(n);
+      for (int j = 0; j < 4; ++j) { // Para cada vaga de rede....
+        for (int i = 0; i < n; ++i) { // Para cada rede encontrada....
+          if ((WiFi.encryptionType(i) != 7) and (redes[j] != WiFi.SSID(i)) and (redes[j-1] != WiFi.SSID(i)) and (redes[j-2] != WiFi.SSID(i)) and (redes[j-3] != WiFi.SSID(i))) {
+            redes[j] = WiFi.SSID(i);
+          }
+          // WiFi.encryptionType(i) != 7 = sem senha
+        }
+        Serial.println(String(redes[j]));
+      }
+    } */
+    StringList list;
+    for (int i = 0; i < n; ++i)
+      list.appendFmt("%s (%d dBm)", WiFi.SSID(i).c_str(), WiFi.RSSI(i));
+    int s = ibox.menu("Choose a network", "Please select a WiFi network", &list);
+    //int s = ibox.menu("Choose a network", ".", &redes);
+    //if (s == 0) PCEmulator();
+    String redes[n];
+    RedeAlvo = WiFi.SSID(s).c_str();
+    Serial.println("Rede Alvo: " + RedeAlvo);
+
+    // Start the Search:
+    if (RedeAlvo != " ") {
+
+      // se senha = nome da rede
+      
+      //WiFi.begin(RedeAlvo, RedeAlvo);
+      //WiFi.begin(char(RedeAlvo), char(RedeAlvo));
+      //ibox.message(String(RedeAlvo),String(RedeAlvo));
+      //ibox.message(RedeAlvo.c_str(),RedeAlvo.c_str(),nullptr);
+      //form->update(i * 100 / 12, "Getting date-time from SNTP...");
+      ibox.progressBox("trying to connect", nullptr, false, 200, [&](fabgl::ProgressForm * form) {
+        form->update(0, RedeAlvo.c_str()); 
+        WiFi.begin(RedeAlvo.c_str(), RedeAlvo.c_str());
+      });
+      unsigned short try_cnt = 0;
+      while (WiFi.status() != WL_CONNECTED && try_cnt < MAX_CONNECT_TIME / WIFI_DELAY) {
+        delay(500); //WIFI_DELAY
+        Serial.print(".");
+        try_cnt++;
+      }
+      if(WiFi.status() == WL_CONNECTED) {
+        Serial.println("");
+        Serial.println(RedeAlvo);
+        Serial.println("Connection Successful!");
+        Serial.println("Your device IP address is ");
+        Serial.println(WiFi.localIP());
+        //display.drawString(0, 0, "Conectado por WiFi!");
+        //linha4 = "Senha Correta!";
+        ibox.message("password found", RedeAlvo.c_str(), nullptr, "Ok");
+        senhaDesconhecida = 0;
+        //break;
+        /*if (digitalRead(esquerdo) == HIGH) {
+          //Serial.println("esquerdo apertado");
+          //delay(170); // espera para cada apertada ser vista individualmente 
+          tela = 0; // voltar pelo menu
+          break;
+        }*/
+      }
+
+      // se senha = nome da rede, todas letras minusculas
+      String TudoMinusculas = RedeAlvo;
+      TudoMinusculas.toLowerCase();
+      if ((RedeAlvo != TudoMinusculas) and (senhaDesconhecida == 1)) {
+        Serial.println("RedeAlvo != (TudoMinusculas.toLowerCase()");
+        ibox.progressBox("trying to connect", nullptr, false, 200, [&](fabgl::ProgressForm * form) {
+          form->update(0, TudoMinusculas.c_str()); 
+          WiFi.begin(RedeAlvo.c_str(), TudoMinusculas.c_str());
+        });
+        //ibox.message(RedeAlvo.c_str(),TudoMinusculas.c_str(),nullptr,nullptr);
+        try_cnt = 0;
+        while (WiFi.status() != WL_CONNECTED && try_cnt < MAX_CONNECT_TIME / WIFI_DELAY) {
+          delay(WIFI_DELAY);
+          Serial.print(".");
+          try_cnt++;
+        }
+        if(WiFi.status() == WL_CONNECTED) {
+          Serial.println("");
+          Serial.println(RedeAlvo);
+          Serial.println("Connection Successful!");
+          Serial.println("Your device IP address is ");
+          Serial.println(WiFi.localIP());
+          //display.drawString(0, 0, "Conectado por WiFi!");
+          ibox.message("password found", TudoMinusculas.c_str(), nullptr, "Ok");
+          senhaDesconhecida = 0;
+          //break;
+          /* if (digitalRead(esquerdo) == HIGH) {
+            //Serial.println("esquerdo apertado");
+            //delay(170); // espera para cada apertada ser vista individualmente 
+            tela = 0; // voltar pelo menu
+            
+          } */
+        }
+      }
+
+      // se senha = nome da rede, todas letras minusculas e sem espaços
+      String SemEspacos = TudoMinusculas;
+      SemEspacos.replace(" ", "");
+      Serial.println(String(SemEspacos));
+      if ((SemEspacos != TudoMinusculas) and (senhaDesconhecida == 1)) {
+        ibox.progressBox("trying to connect: no space", nullptr, false, 200, [&](fabgl::ProgressForm * form) {
+          form->update(0, SemEspacos.c_str()); 
+          WiFi.begin(RedeAlvo.c_str(), SemEspacos.c_str());
+        });
+        
+        
+        //ibox.message(RedeAlvo.c_str(),SemEspacos.c_str(),nullptr,nullptr);
+        try_cnt = 0;
+        while (WiFi.status() != WL_CONNECTED && try_cnt < MAX_CONNECT_TIME / WIFI_DELAY) {
+          delay(WIFI_DELAY);
+          Serial.print(".");
+          try_cnt++;
+        }
+        if(WiFi.status() == WL_CONNECTED) {
+          Serial.println("");
+          Serial.println(RedeAlvo);
+          Serial.println("Connection Successful!");
+          Serial.println("Your device IP address is ");
+          Serial.println(WiFi.localIP());
+          //display.drawString(0, 0, "Conectado por WiFi!");
+          //linha4 = "Senha Correta!";
+          ibox.message("password found", SemEspacos.c_str(), nullptr, "Ok");
+          senhaDesconhecida = 0;
+          //break;
+          /*if (digitalRead(esquerdo) == HIGH) {
+            //Serial.println("esquerdo apertado");
+            //delay(170); // espera para cada apertada ser vista individualmente 
+            tela = 0; // voltar pelo menu
+            break;
+          } */
+        }
+      }
+      // caso mais raro, ficou de fora
+      // se senha = nome da rede + 123
+    
+    //Pegando uma senha do arquivo
+    
+    //Initialise SPIFFS:
+    if(!SPIFFS.begin()){
+      Serial.println("SPIFFS Mount Failed");
+      return;
+    }  
+    File f = SPIFFS.open("/Senhas.dat", "r"); // r = abrir para leitura
+    String line = "senha secretaentra sua senha";
+    //char psw[32]  = "";
+    //while(senhaDesconhecida == 1) {
+    while(f.available()) {
+    
+      WiFi.softAPdisconnect();
+      delay(500);
+      //delay(1000);
+      //File f = SPIFFS.open("/Senhas.dat", "r"); // r = abrir para leitura
+      /* if (digitalRead(esquerdo) == HIGH) {
+        //Serial.println("esquerdo apertado");
+        //delay(170); // espera para cada apertada ser vista individualmente 
+        tela = 0; // voltar pelo menu
+      } */
+      //Serial.println("Fim do loop3");
+      line = f.readStringUntil('\n');
+      //Serial.println("Fim do loop2");
+      //delay(500);
+      //psw = f.readStringUntil('\n'); //incompatible types in assignment of 'String' to 'char [32]'
+      //psw = (f.readStringUntil('\n')).c_str(); //incompatible types in assignment of 'const char*' to 'char [32]'
+      //strcpy(psw, String(f.readStringUntil('\n'))); //cannot convert 'String' to 'const char*' for argument '2' to 'char* strcpy(char*, const char*)'
+      //psw = String(f.readStringUntil('\n')); //incompatible types in assignment of 'String' to 'char [32]'
+      //psw = getString(f.readStringUntil('\n')); //'getString' was not declared in this scope
+      // strcpy(psw, line); //cannot convert 'String' to 'const char*' for argument '2' to 'char* strcpy(char*, const char*)'
+      //ibox.message(RedeAlvo.c_str(),line.c_str());
+      Serial.println(line);
+      ibox.progressBox("trying to connect", nullptr, false, 200, [&](fabgl::ProgressForm * form) {
+        form->update(0, line.c_str()); 
+        //WiFi.begin(RedeAlvo.c_str(), line.c_str());
+        WiFi.begin(RedeAlvo.c_str(), line.c_str());
+      });
+        //WiFi.begin(RedeAlvo.c_str(), line.c_str());
+        //delay(500);
+        try_cnt = 0;
+        
+        /* Wait until WiFi connection but do not exceed MAX_CONNECT_TIME */
+        while (WiFi.status() != WL_CONNECTED && try_cnt < MAX_CONNECT_TIME / WIFI_DELAY) {
+          delay(WIFI_DELAY);
+          Serial.print(".");
+          try_cnt++;
+        }
+        if(WiFi.status() == WL_CONNECTED) {
+          Serial.println("");
+          Serial.println("Connection Successful!");
+          Serial.println("Your device IP address is ");
+          Serial.println(WiFi.localIP());
+          ibox.message("password found", line.c_str(), nullptr, "Ok");
+          senhaDesconhecida = 0;
+          f.close();
+          break;
+        }
+        /* else {
+          ibox.message("password not found", nullptr, "Ok");
+          //f.close();
+          Serial.println("Connection FAILED");
+        } */
+      //Serial.println("Fim do loop");
+      }
+    f.close();
+    
+    }
+    // if the next app use another way:
+    SPIFFS.end();
+}
+
+
+
+// App Web Radios
+void WebRadios()
+{
+  Serial.println("WebRadio Player Start! ");
+  Audio audio(true, 1, 0); // OK!
+  
+  //Serial.println(ESP.getFreeHeap());
+
+  /*if(psramInit()){
+          Serial.println("\nThe PSRAM is correctly initialized");
+  }else{
+          Serial.println("\nPSRAM does not work");
+  } */
+
+  //max_stations= sizeof(stations)/sizeof(stations[0]); log_i("max stations %i", max_stations);
+
+  /* pref.begin("WebRadio", false);  // instance of preferences for defaults (station, volume ...)
+  if(pref.getShort("volume", 1000) == 1000){ // if that: pref was never been initialized
+      pref.putShort("volume", 7);
+      pref.putShort("station", 0);
+  }
+  else{ // get the stored values
+      cur_station = pref.getShort("station");
+      cur_volume = pref.getShort("volume");
+      //cur_volume = 7;
+  } */
+
+  // connect to wifi
+  /* Clear previous modes. */
+  WiFi.softAPdisconnect();
+  WiFi.disconnect();
+
+  //heap_caps_dump_all(); reset the system
+
+  /*WiFi.begin("CarmemCurute","19842806");
+  while (WiFi.status() != WL_CONNECTED){
+      delay(2000);
+      Serial.print(".");
+  } */
+  
+  tryToConnect();
+  
+  // No more display needed
+  ibox.end();
+  
+  //auto buf = (uint8_t*) SOC_EXTRAM_DATA_LOW; // use PSRAM as buffer
+  
+  //log_i("Connect to %s", WiFi.SSID().c_str());
+
+  // Example of text input box
+  //char name[32] = "";
+  //if (ibox.textInput("Asking station", "What's station number?", name, 31) == InputResult::Enter)
+    //ibox.messageFmt("", nullptr, "OK", "Nice to meet you %s!", name);
+  //cur_station = atoi(name);
+  /* if name == "0" {
+    cur_station = 0;
+  }
+  else if name == "1" {
+    cur_station = 1;
+  } */
+
+  
+  //Serial.println("Increasing buffer size. ");
+  audio.setBufsize(15000, 0);
+
+  //ESP.getFreeHeap()
+  cur_volume = 6;
+  audio.setVolume(cur_volume); // 0...21
+  //cur_station = 0;
+  
+  audio.connecttohost("https://prod-52-91-107-216.wostreaming.net/goodkarma-wknramaac-ibc2"); // ESPN 850 AM news talk sports USA
+
+  //loop
+  while (1) {
+    audio.loop();
+    //tp.loop();
+    // take a keypress
+    //int scode = PS2Controller::keyboard()->getNextScancode();
+    //Serial.println(scode);
+
+    if (PS2Controller::keyboard()->scancodeAvailable()) {
+      int scode = PS2Controller::keyboard()->getNextScancode();
+      if ((scode == 114) and (cur_volume>2)) {
+        cur_volume = cur_volume - 2;
+        audio.setVolume(cur_volume);
+      }
+      else if ((scode == 117) and (cur_volume < max_volume)) {
+        cur_volume = cur_volume + 2;
+        audio.setVolume(cur_volume);
+      }
+      else if (scode == 22) { // 1
+        //audio.connecttospeech("Gaúcha, Brasil.", "pt"); 
+        audio.connecttohost("https://1132747t.ha.azioncdn.net/primary/gaucha_rbs.sdp/chunklist_47ea98af-3f33-4a88-9628-a617e3e40466.m3u8"); // News Porto Alegre - RS OK 25/3
+      }
+      else if (scode == 30) { // 2
+        //audio.connecttospeech("92 FM, Brasil.", "pt");
+        //audio.connecttomarytts("92 FM, Brasil.", "pt","bits1");
+        audio.connecttohost("https://aovivord92fm.rbsdirect.com.br/memorystreams/HLS/92fm/92fm-32000.m3u8"); // pop news talk brazilian  Server:Brazil OK 25/3
+      }
+      else if (scode == 38) { // 3
+        audio.connecttospeech("Business 87.5 FM, Russia.", "en");
+        audio.connecttohost("http://bfm.hostingradio.ru:8004/fm?1679613025750"); // Business 87.5 FM Moscow / Russia OK 25/3 (slow in brasil)
+      }
+      else if (scode == 37) { // 4
+        audio.connecttospeech("Radio 10, Argentina.", "en");
+        audio.connecttohost("https://radio10.stweb.tv/radio10/live/chunks.m3u8"); // Radio 10 pop news talk latin OK 25/3
+      }
+      else if (scode == 46) { // 5
+        audio.connecttohost("https://streaming.fabrik.fm/voc/echocast/audio/low/index.m3u8"); // Voice of the Cape news talk South Africa Server:South Africa OK 25/3
+      }
+      else if (scode == 54) { // 6
+        audio.connecttohost("0n-80s.radionetz.de:8000/0n-70s.mp3"); //  0 N - 70s on Radio Deutsch Server:Germany OK 25/3
+      }
+      else if (scode == 61) { // 7
+        audio.connecttohost("https://stream2.cnmns.net/paradisefm"); //Paradise FM pop news talk oldies Server:Australia OK 25/3
+      }
+      else if (scode == 62) { // 8
+        //audio.connecttohost("http://61.89.201.27:8000/radikishi.mp3"); // Radio Kishiwada Japan pop news talk classic ethnic Server:Japan failed!
+        audio.connecttohost("https://stream-icy.bauermedia.pt/comercial.aac"); // Radio Comercial Portugal pop news folk Server:UK OK 25/3
+      }
+      else if (scode == 70) { // 9
+        audio.connecttohost("https://rhema-radio.streamguys1.com/rhema-star.mp3"); // Star FM talk christian  Server:NZ OK 25/3 (slow in brasil)
+      }
+      else if (scode == 69) { // 0
+        audio.connecttohost("http://10.42.0.1/audio.m3u"); // open a file call 'audio.m3u in a Linux computer router wifi and webserver started. (opening an access point in Linux)
+      }
+      //else if (scode == 69) { // 0
+      //  audio.connecttohost("http://10.42.0.1/audio.m3u"); // open a file call 'audio.m3u in a Linux computer router wifi and webserver started. 
+      //}
+      /* else if (scode == 116){  // the list of urls spend much memory
+        if (cur_station<max_stations-1) cur_station++;
+        else cur_station = 0;
+        audio.connecttohost(stations[cur_station].c_str());
+      }
+      else if (scode == 107){
+        if (cur_station>0) cur_station--;
+        else cur_station = max_stations-1;
+        audio.connecttohost(stations[cur_station].c_str());
+      } */
+      else if (scode == 102) {  // get out backspace
+        esp_restart();
+      }
+                                
+    //xprintf("%02X ", scode);
+    //if (scode == 0xF0 || scode == 0xE0) ++clen;
+    //--clen;
+    //if (clen == 0) {
+    //  clen = 1;
+    //  xprintf("\r\n");
+    //}
+    Serial.println(scode);
+  }
+
+    
+  }
+
+}
+
+
 
 
 
 void setup()
 {
   Serial.begin(115200); delay(500); printf("\n\n\nStart\n\n");// DEBUG ONLY
+
+  
+  Serial.println(ESP.getFreeHeap());
+  //heap_caps_get_free_size();
 
   disableCore0WDT();
   delay(100); // experienced crashes without this delay!
@@ -880,10 +1422,13 @@ void setup()
   ibox.begin(VGA_640x480_60Hz, 500, 400, 4);
   ibox.setBackgroundColor(RGB888(0, 0, 0));
 
-  ibox.onPaint = [&](Canvas * canvas) { drawInfo(canvas); };
+  //ibox.onPaint = [&](Canvas * canvas) { drawInfo(canvas); };
 
-  if (!FileBrowser::mountSDCard(false, SD_MOUNT_PATH, 8))   // @TODO: reduce to 4?
-    ibox.message("Error!", "This app requires a SD-CARD!", nullptr, nullptr); 
+  if (!FileBrowser::mountSDCard(false, SD_MOUNT_PATH, 8)){ // @TODO: reduce to 4?
+    //ibox.message("", "microSD-CARD not found!", nullptr, nullptr); 
+    hasSD = false;
+  }
+    
 
   // uncomment to format SD!
   //FileBrowser::format(fabgl::DriveType::SDCard, 0);
@@ -891,6 +1436,8 @@ void setup()
   esp_register_shutdown_handler(shutdownHandler);
 
   //updateDateTime();
+
+  //heap_caps_get_free_size();
 
 }
 
@@ -932,17 +1479,23 @@ void loop()
 
 
   // Example of simple menu (items from StringList)
-  Serial.println("string list");
+  //Serial.println("Main Menu");
   fabgl::StringList list;
   list.append("PCEmulator"); //0
   list.append("ChatterBox");
   list.append("File Browser");
   list.append("Update time");
   list.append("JPG View");
+  //list.append("txt WebBrowser");
+  list.append("Web Radios");
+  list.append("Wifi Safe");
   list.select(1, true);
   //int s = ibox.menu("Applications list", "Click on an item", &list);
-  int s = ibox.menu("Applications list", ".", &list);
-  if (s == 0) PCEmulator();
+  int s = ibox.menu("Applications", "choose the app", &list);
+  if (s == 0) {
+    if (hasSD == false) ibox.message("Error!", "microSD-CARD not found!", nullptr, nullptr); 
+    else PCEmulator();
+  }
   if (s == 1) {
     //Initialise SPIFFS:
     if(!SPIFFS.begin()){
@@ -966,12 +1519,15 @@ void loop()
   if (s == 4) {
     JPGView();
   }
-  //if (s == 5) 
-  //if (s == 6) 
+  if (s == 5) {
+    //News();
+    WebRadios();
+  }
+  if (s == 6) WifiSafe();
   //if (s == 7) 
   //if (s == 8) 
   //if (s == 9) 
-  Serial.println("string list ok");
+  //Serial.println("string list ok");
   //delay(1000);
   //ibox.messageFmt("", nullptr, "OK", "You have selected item %d", s);
 
@@ -1012,3 +1568,6 @@ void loop()
   // }
   */
 }
+
+//O sketch usa 1766738 bytes (56%) de espaço de armazenamento para programas. O máximo são 3145728 bytes.
+//Variáveis globais usam 57456 bytes (17%) de memória dinâmica, deixando 270224 bytes para variáveis locais. O máximo são 327680 bytes.
