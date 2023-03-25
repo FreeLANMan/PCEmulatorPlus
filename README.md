@@ -1,6 +1,30 @@
 # PCEmulatorPlus
 The PCEmulator by Fabrizio Di Vittorio plus more applications for a more complete system.
 
+Release 0.6:
+Now with Webradios!
+
+How to use WebRadio:
+- Keys from 1 to 0 to choose the radio.
+- 'Up' and 'Down' keys to change the volume.
+- 'Backspace' key to exit the app.
+- The key needs to be pressed for about 10 seconds to work.
+- You can add radios by changing the code. It would even be possible to place several radios on the letter keys. You can also change the code to play playlists over your local area network (LAN).
+
+The idea is to make the system also work without a monitor and will be implemented in future versions with more apps.
+
+Used libs:
+TJpg_Decoder by Bodmer version 0.0.2 https://github.com/Bodmer/TJpg_Decoder/releases/tag/0.0.2
+FabGL by Fabrizio Di Vittorio version 1.0.9 https://github.com/fdivitto/FabGL/releases/tag/v1.0.9
+And
+Board arduino-esp32 by espressif version 1.0.6 https://github.com/espressif/arduino-esp32/releases/tag/1.0.6
+ESP32-audioI2S por Wolle https://github.com/schreibfaul1/ESP32-audioI2S
+
+"O sketch usa 1766738 bytes (56%) de espaço de armazenamento para programas. O máximo são 3145728 bytes.
+Variáveis globais usam 57456 bytes (17%) de memória dinâmica, deixando 270224 bytes para variáveis locais. O máximo são 327680 bytes."
+
+
+
 Release 0.5:
 Five Apps in main menu:
 -- PCEmulator (The main app for use many O.S. and apps)
@@ -10,7 +34,7 @@ Original code: https://github.com/fenwick67/esp32-chatterbox
 
 -- App JPG View: Only .jpg files on internal memory (SPIFFS). Only files with <1Mb for now. Only 512x384 pixels visible (can be change in the code)
 Original code: https://github.com/fdivitto/FabGL/discussions/160#discussioncomment-1423074
-Recomnded: Use the Hercules mode and convert the imagens to see in 'Compushow' or VUIMG.
+Recomended: Use the Hercules mode and convert the imagens to see in 'Compushow' or VUIMG.
 (Alternatively you can view .gif images in 4 colors and 320x200 using the 'Compushow' application available on the HD-Geral disk image, by PCEmulator: https://drive.google.com/file/d/1sEvAZ998l3wTq4KzkuHQPrPWqZv5kday/view?usp= sharing
 I recommend 1st converting the image using the GIMP application with scale image/canvas to fit in 320x200, sharpen filter, indexed mode: 'generate optimum pallete maximum colors 4', 'color dithering Floyd-Steinberg Reduced'.)
 
