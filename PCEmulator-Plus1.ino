@@ -71,7 +71,7 @@ extern "C" {
 
 FileBrowser fb("/");
 
-// #define SD_MOUNT_PATH "/SD"
+//#define SD_MOUNT_PATH "/SD"
 
 #define SPIFFS_MOUNT_PATH  "/flash"
 #define FORMAT_ON_FAIL     true
@@ -95,6 +95,22 @@ static bool wifiConnected = false;
 static bool downloadOK    = false;
 
 bool hasSD = true; // tem microSD?
+bool audioMode = false; // output from Monitor activided
+char path[30] = "/";
+
+#include <SPI.h>
+
+//SD Card
+//#define SD_CS 22
+#define SD_CS 13
+#define SPI_MOSI 12
+#define SPI_MISO 2
+#define SPI_SCK 14
+
+// for the SD use
+#include "SD.h"
+
+
 
 
 // For App chatterbox
@@ -129,19 +145,115 @@ fabgl::Canvas cv(&VGAController);
 #include "Audio.h"
 //#include <Preferences.h> 
 //#include <WiFi.h>
-//#include <SPI.h>
 
-//Preferences pref;
-//Audio audio(true, I2S_DAC_CHANNEL_RIGHT_EN);
-//Audio audio(true, 1, 0); // OK!
-//Audio audio(true, 0, 0);
-// Audio audio;  // no sound
 
   uint8_t max_volume   = 21;
- // uint8_t max_stations = 0;   //will be set later
- // uint8_t cur_station  = 0;   //current station(nr), will be set later
-  uint8_t cur_volume   = 0;   //will be set from stored preferences
+  uint8_t cur_volume   = 10;  
   
+
+
+// For Audio Player https://how2electronics.com/esp32-music-audio-mp3-player/
+//int file_index = 1000;
+//String file_list[20];
+//int file_num = 0;
+//String filename = " ";
+
+/* void open_new_song(Audio audio, String filename)
+{
+  //Audio audio(true, 1, 0);
+  //music_info.name = filename.substring(1, filename.indexOf("."));
+  File file = SD.open(filename);
+  //file.name() = filename;
+  audio.connecttoFS(SD, file.name());
+  //music_info.runtime = audio.getAudioCurrentTime();
+  //music_info.length = audio.getAudioFileDuration();
+  //music_info.volume = audio.getVolume();
+  //music_info.status = 1;
+  Serial.println("**********start a new sound************");
+
+  /* while(1) {
+  //audio.loop();
+  if (audio.isRunning()) {
+    Serial.println("cheguei aqui");
+    audio.loop();
+  }
+  else
+  {
+    Serial.println("cheguei aqui2");
+    break;
+    //delay(1000);
+    /*if (audio.isRunning()) {
+     audio.connecttohost(urls[UrlSelector].c_str());
+    }*/
+  //}
+  
+  //audio.loop();
+
+  /*if (PS2Controller::keyboard()->scancodeAvailable()) {
+    int scode = PS2Controller::keyboard()->getNextScancode();
+  if (scode == 22) { // 1 WebRadios
+    WebRadios();
+  }
+  else if (scode == 30) { // 2 //ChatterBox bate papo horizontal
+    ChatterBox();
+  }
+  //else if (scode == 38) { // 3 Mp3 Player
+
+  //} 
+  } 
+
+    
+}*/
+
+/* void AudioMenu() {
+  Serial.println("audioMenu iniciado");
+  ibox.end();       // No more display needed
+  FileBrowser::unmountSDCard(); // lets mount another path
+  Audio audio(true, 1, 0);
+  //Audio audio(true, 1, 0);
+  //audio.setBufsize(15000, 0);
+  audio.setVolume(12);
+  pinMode(13, OUTPUT);      
+  digitalWrite(13, HIGH);
+  SPI.begin(14,2,12);
+  SPI.setFrequency(1000000);
+  SD.begin(13);
+  //File root = SD.open("/"); // OK
+  //if(!root){
+  //  Serial.println("Failed to open directory");
+  //  return;
+  //}
+  //audio.setVolume(12);
+  //audio.connecttoFS(SD, "/audio.mp3");
+  //if (!FileBrowser::mountSDCard(false, "/VGA32Audio/", 8)) Serial.println("Não montou");
+  //if (!FileBrowser::mountSDCard(false, "/VGA32Audio", 8)) Serial.println("Não montou");
+  //else {
+  //audio.connecttoFS(SD, "/VGA32Audio/welcome.mp3");
+  open_new_song(audio, "/VGA32Audio/welcome.mp3");
+  
+  open_new_song(audio, "/VGA32Audio/press.mp3");
+  //open_new_song("/VGA32Audio/one.mp3");
+  //open_new_song("/VGA32Audio/for.mp3");
+  //open_new_song("/VGA32Audio/internet.mp3");
+  //open_new_song("/VGA32Audio/radio.mp3");
+
+} */
+
+void audio_eof_mp3(const char *info) { //end of file
+    Serial.print("eof_mp3     ");
+    Serial.println(info);
+    esp_restart();
+    //if (audio.isRunning())    Serial.println("audio.isRunning");
+    //playNextFile(); // play next file in directory if playing a multi-track episode
+    
+    /* file_index++;
+    if (file_index >= file_num)
+    {
+        file_index = 0;
+    }
+    if (file_index < 999) open_new_song(file_list[file_index]); */
+
+} 
 
 
 // For app Web Radios
@@ -156,21 +268,130 @@ void audio_showstreamtitle(const char *info){
     sinfo.replace("|", "\n");
     //write_streamTitle(sinfo);
 }
-void audio_eof_speech(const char *info){
-    Serial.print("eof_speech  ");Serial.println(info);
-}
-/* void StationPick() {
-  char name[32] = "";
-  if (ibox.textInput("Asking station", "What's station number?", name, 31) == InputResult::Enter)
-    cur_station = atoi(name);
-  if (cur_station == 1) {
-    audio.connecttospeech("Gaúcha, Brasil.", "br");
-    
+
+void PlayAudio(const char* filename){
+
+  /* if(psramInit()){
+          Serial.println("\nThe PSRAM is correctly initialized");
   }
-} */
+  else{
+          Serial.println("\nPSRAM does not work");
+  } */
 
 
   
+  Audio audio(true, 1, 0);
+  //Serial.println("Increasing buffer size. ");
+  //audio.setBufsize(15000, 0);
+  //audio.setBufsize(1000, 0); A stack overflow in task IDLE0 has been detected.
+  //audio.setBufsize(2000, 0); Não funcionou
+  //audio.setBufsize(50000, 0); //Não funcionou 
+  //audio.setBufsize(5000, 0); //inputBufferSize: 3399 bytes Não funcionou 
+
+  
+    //Serial.printf("Listing directory: %s\n", dirname);
+    //int i = 0;
+ 
+    //File root = fs.open(path);
+
+  audio.forceMono(true); // necessary to have enough memory to play
+  
+  audio.setVolume(6); // 0...21
+  //open_new_song(audio, file_list[file_index]);
+  //open_new_song(audio, filename);
+  //print_song_time();
+
+  //filename = file_list[file_index];
+      //file.name() = filename;
+      //audio.connecttoFS(SD, file.name());
+   //   audio.connecttoFS(SD, filename);
+
+
+  //audio.connecttoFS(SD, filen3);
+  audio.connecttoFS(SD, filename);
+
+  while (1) {
+    audio.loop();
+
+   /* if (audio.isRunning()){
+      Serial.println("audio.isRunning");
+      audio.loop();
+    }
+    else {
+      audio.stopSong();
+      //file_index++;
+    /* if (file_index >= file_num)
+    {
+        file_index = 0;
+    }
+    if (file_index < 999) open_new_song(audio, file_list[file_index]);
+    }  */
+
+    //File root = fs.open(path);
+    /* root = fs.open(path);
+    if (!root) {
+        Serial.println("Failed to open directory");
+        //return i;
+    }
+    if (!root.isDirectory())
+    {
+        Serial.println("Not a directory");
+        //return i;
+    }
+ 
+    File file = root.openNextFile();
+    file = root.openNextFile();
+    while (file)
+    {
+        if (file.isDirectory())
+        {
+        }
+        else
+        {
+            filename = file.name();
+            if (filename.endsWith(".wav"))
+            {
+              open_new_song(audio, filename);
+            }
+            else if (filename.endsWith(".mp3"))
+            {
+              open_new_song(audio, filename);
+            }
+        }
+        file = root.openNextFile();
+    } */
+    
+
+    // take a keypress
+    /* int scode = PS2Controller::keyboard()->getNextScancode();
+    Serial.println(scode);
+    if (PS2Controller::keyboard()->scancodeAvailable()) {
+      int scode = PS2Controller::keyboard()->getNextScancode();
+      Serial.println(scode);
+      if ((scode == 114) and (cur_volume>2)) {
+        cur_volume = cur_volume - 2;
+        audio.setVolume(cur_volume);
+      }
+      else if ((scode == 117) and (cur_volume < max_volume)) {
+        cur_volume = cur_volume + 2;
+        audio.setVolume(cur_volume);
+      }
+      else if (scode == 102) {  // get out backspace
+        esp_restart();
+      } 
+                                
+    //xprintf("%02X ", scode);
+    //if (scode == 0xF0 || scode == 0xE0) ++clen;
+    //--clen;
+    //if (clen == 0) {
+    //  clen = 1;
+    //  xprintf("\r\n");
+    //}
+    }  */
+    
+  }
+}
+
 
 
 
@@ -709,6 +930,16 @@ void PCEmulator()
   /* if (!FileBrowser::mountSDCard(false, SD_MOUNT_PATH, 8))   // @TODO: reduce to 4?
     ibox.message("Error!", "This app requires a SD-CARD!", nullptr, nullptr); */
 
+  if (!FileBrowser::mountSDCard(false, SD_MOUNT_PATH, 8)){ // @TODO: reduce to 4?
+      //ibox.message("", "microSD-CARD not found!", nullptr, nullptr); 
+      hasSD = false;
+        Serial.println("SD not Found. ");
+      }
+   else {
+        hasSD = true;
+        Serial.println("SD Found. ");
+   }
+
   // try to turn off the wifi
   WiFi.mode(WIFI_OFF);
   
@@ -937,10 +1168,7 @@ void ChatterBox()
 void JPGView()
 {
   FileBrowser::mountSPIFFS(FORMAT_ON_FAIL, SPIFFS_MOUNT_PATH);
-  // Browse Files
-  //ibox.folderBrowser("Browse Files", SD_MOUNT_PATH);
-  //break;
-  ////////////////////////////////////////////////////
+
   // File Select
   if (SPIFFS_MOUNT_PATH) {
     char filename[16] = "/";
@@ -948,14 +1176,8 @@ void JPGView()
     char directory[32];
     strcpy(directory, SPIFFS_MOUNT_PATH);
     if (ibox.fileSelector("File Select", "Filename: ", directory, sizeof(directory) - 1, filename, sizeof(filename) - 1) == InputResult::Enter) {
-    //if (ibox.fileSelector("File Select", "Filename: ", directory, sizeof(directory) - 1, filename, sizeof(filename)) == InputResult::Enter) {
-      //directory += filename;   - invalid use of non-lvalue array
       Serial.print("directory: ");
       Serial.println(directory);
-      //filename = "/" + filename;  //invalid use of non-lvalue array
-      //'/' += filename; invalid use of non-lvalue array
-      //filename[16] = "/" + filename; invalid operands of types 'const char [2]' and 'char [16]' to binary 'operator+'
-      //filename[16] = "/" += filename; invalid use of non-lvalue array
       Serial.print("filename: ");
       Serial.println(filename);
 
@@ -963,10 +1185,7 @@ void JPGView()
       SPIFFS.end();
       
       ShowJPG(filename);
-      //delay(2000);
     }
-        
-  //Serial.print("hi");
   }
 }
 
@@ -1241,8 +1460,7 @@ void WifiSafe() { // app Wi-Fi Seguro
 void WebRadios()
 {
   Serial.println("WebRadio Player Start! ");
-  Audio audio(true, 1, 0); // OK!
-  
+
   //Serial.println(ESP.getFreeHeap());
 
   /*if(psramInit()){
@@ -1282,24 +1500,8 @@ void WebRadios()
   // No more display needed
   ibox.end();
   
-  //auto buf = (uint8_t*) SOC_EXTRAM_DATA_LOW; // use PSRAM as buffer
-  
-  //log_i("Connect to %s", WiFi.SSID().c_str());
-
-  // Example of text input box
-  //char name[32] = "";
-  //if (ibox.textInput("Asking station", "What's station number?", name, 31) == InputResult::Enter)
-    //ibox.messageFmt("", nullptr, "OK", "Nice to meet you %s!", name);
-  //cur_station = atoi(name);
-  /* if name == "0" {
-    cur_station = 0;
-  }
-  else if name == "1" {
-    cur_station = 1;
-  } */
-
-  
   //Serial.println("Increasing buffer size. ");
+  Audio audio(true, 1, 0);
   audio.setBufsize(15000, 0);
 
   //ESP.getFreeHeap()
@@ -1312,7 +1514,7 @@ void WebRadios()
   //loop
   while (1) {
     audio.loop();
-    //tp.loop();
+    
     // take a keypress
     //int scode = PS2Controller::keyboard()->getNextScancode();
     //Serial.println(scode);
@@ -1397,6 +1599,144 @@ void WebRadios()
 
 
 
+void AudioPlayer(){
+  Serial.println("Audio Player started");
+
+  /* Serial.print( "fAlarm " );
+  Serial.print(uxTaskGetStackHighWaterMark( NULL ));
+  Serial.println();
+  Serial.flush(); */
+
+  //ibox.textInput("Audio Player", "Path", path, sizeof(path), "Cancel", "OK",false);
+
+  if (!FileBrowser::mountSDCard(false, SD_MOUNT_PATH, 8)){ // @TODO: reduce to 4?
+    //ibox.message("", "microSD-CARD not found!", nullptr, nullptr); 
+    hasSD = false;
+    Serial.println("SD not Found. ");
+  }
+  else {
+    hasSD = true;
+    Serial.println("SD Found. ");
+  }
+
+  char filename[50] = "/";
+  //String filename;
+  char directory[50];
+  strcpy(directory, "/");
+  if (ibox.fileSelector("Audio Player", "Filename: ", directory, sizeof(directory) - 1, filename, sizeof(filename) - 1) == InputResult::Enter) {
+  //if (ibox.fileSelector("File Select", "Filename: ", directory, sizeof(directory) - 1, filename, sizeof(filename)) == InputResult::Enter) {
+    //directory += filename;   - invalid use of non-lvalue array
+    Serial.print("directory: ");
+    Serial.println(directory);
+    //filename = "/" + filename;  //invalid use of non-lvalue array
+    //'/' += filename; invalid use of non-lvalue array
+    //filename[16] = "/" + filename; invalid operands of types 'const char [2]' and 'char [16]' to binary 'operator+'
+    //filename[16] = "/" += filename; invalid use of non-lvalue array
+    Serial.print("filename: ");
+    Serial.println(filename);
+  }
+    //String filen;
+    //String diren;
+    //String filen = directory + filename; //invalid operands of types 'char [32]' and 'char [50]' to binary 'operator+'
+    //strcpy(diren,directory);
+    //strcpy(filen,filename); //cannot convert 'String' to 'char*' for argument '1' to 'char* strcpy(char*, const char*)'
+    //filen = diren + filen;
+    //directory =+ filename; incompatible types in assignment of 'char*' to 'char [32]'
+    //String diren = toString(directory); //'toString' was not declared in this scope
+    //String filen = toString(filename);
+    //filen = filen + diren;
+    char filen[strlen(directory)+strlen(filename)+1] = "";
+    strcat(filen,directory);
+    Serial.print("filen: ");
+    Serial.println(filen);
+    strcat(filen,"/");
+    strcat(filen,filename);
+    Serial.print("filen: ");
+    Serial.println(filen);
+    //strcpy (filen,filen[5].c_str());
+    //filen.erase (0,5); //request for member 'erase' in 'filen', which is of non-class type 'char
+
+    String filen2;
+    filen2 += filen;
+    Serial.print("filen2: ");
+    Serial.println(filen2);
+    //filen2.erase(0,5); //'class String' has no member named 'erase'
+    //std::string filen2 = filen2.substr(5); //conflicting declaration 'std::__cxx11::string filen2'
+    filen2.remove(0, 3);  
+    Serial.print("filen2: ");
+    Serial.println(filen2);
+    
+  //Unmound SD
+  FileBrowser::unmountSDCard();
+  Serial.println("Card unMount!"); 
+
+  // No more display needed
+  ibox.end();
+
+  SPIFFS.end();
+
+  /* Clear previous modes. */
+  WiFi.softAPdisconnect();
+  WiFi.disconnect();
+  // try to turn off the wifi
+  WiFi.mode(WIFI_OFF);
+
+/*
+ * Optional SD Card connections:
+ *   MISO => GPIO 16  (2 for PICO-D4)
+ *   MOSI => GPIO 17  (12 for PICO-D4)
+ *   CLK  => GPIO 14
+ *   CS   => GPIO 13 */
+  //SD(SPI)
+  pinMode(SD_CS, OUTPUT);
+  digitalWrite(SD_CS, HIGH);
+  SPI.begin(SPI_SCK, SPI_MISO, SPI_MOSI);
+  //Serial.println("pin3");
+  SPI.setFrequency(1000000);
+  //Serial.println("pin4");
+  if (!SD.begin(SD_CS, SPI)) {
+      Serial.println("Card Mount Failed");
+      //break;
+  }
+  else Serial.println("Card Mount Ok!");  
+
+  // get the path
+
+  /* auto r = ibox.textInput("MP3 Player", "Path", path, sizeof(path), "Cancel", "OK",false);
+  switch (r) {
+    case InputResult::ButtonExt1:
+      Serial.println(path);
+      //getDisk(URL);
+      //break;
+    case InputResult::Enter:
+      Serial.println(path);
+      //char const * filename = getDisk(URL);
+      //Serial.println(filename);
+      //readFile(SD, filename);
+      //break;
+  } */
+
+
+  
+  //Read SD
+  //file_num = get_music_list(SD, path, 0, file_list);
+  //Serial.print("Music file count:");
+  //Serial.println(file_num);
+  //Serial.println("All music:");
+  //for (int i = 0; i < file_num; i++)
+  //{
+  //    Serial.println(file_list[i]);
+  //}
+
+  char filen3[filen2.length() + 1];
+  //filen3 = filen2.c_str(); //incompatible types in assignment of 'const char*' to 'char [50]'
+  strcpy(filen3,filen2.c_str()); 
+  PlayAudio(filen3);
+
+  
+} // End of app MP3 Player
+
+
 
 
 void setup()
@@ -1427,8 +1767,16 @@ void setup()
   if (!FileBrowser::mountSDCard(false, SD_MOUNT_PATH, 8)){ // @TODO: reduce to 4?
     //ibox.message("", "microSD-CARD not found!", nullptr, nullptr); 
     hasSD = false;
+    Serial.println("SD not Found. ");
   }
-    
+  else {
+    hasSD = true;
+    Serial.println("SD Found. ");
+  }
+
+  //Unmound SD
+  FileBrowser::unmountSDCard();
+  Serial.println("Card unMount!"); 
 
   // uncomment to format SD!
   //FileBrowser::format(fabgl::DriveType::SDCard, 0);
@@ -1438,6 +1786,22 @@ void setup()
   //updateDateTime();
 
   //heap_caps_get_free_size();
+
+  // Monitor or Audio?
+  fabgl::StringList list;
+  list.append("Using Audio");
+  list.append("Using Monitor");
+  list.select(0, true);
+  int s = ibox.menu("Applications", "choose the mode", &list);
+  ibox.setAutoOK(5);
+  if (s == 0) {
+    audioMode = true;
+    Serial.println("audioMode ativado");
+  }
+  else if (s == 1) {
+    audioMode = false;
+    Serial.println("audioMode não ativo");
+  }
 
 }
 
@@ -1455,119 +1819,187 @@ using fabgl::s_vgapalctrlcycles;
 void loop()
 {
 
+      
   // Apps Menu
 
-  //ibox.setAutoOK(6);
-  //int idx = preferences.getInt("dconf", 0);
+  if (audioMode == false) {
+    fabgl::StringList list;
+    list.append("PCEmulator"); //0
+    list.append("ChatterBox");
+    list.append("File Browser");
+    list.append("JPG View");
+    list.append("Web Radios");
+    list.append("Audio Player");
+    list.append("Wifi Safe");
 
-  //for (bool showDialog = true; showDialog; ) {
-
-    //StringList dconfs;
-    //for (auto conf = mconf.getFirstItem(); conf; conf = conf->next)
-    //  dconfs.append(conf->desc);
-    //dconfs.select(idx, true);
-  /*ibox.setAutoOK(0);
-  ibox.setupButton(0, "PCEmulator");
-  ibox.setupButton(1, "ChatterBox");
-  ibox.setupButton(2, "JPG View");
-  ibox.setupButton(3, "Update time");
-  ibox.setupButton(4, "File Browser");
-  
-  //auto r = ibox.select("Applications list", "Please select a application", &dconfs, nullptr, " ");
-  auto r = ibox.select("Applications list", "Please select a application", &dconfs, nullptr, nullptr);
-    idx = dconfs.getFirstSelected(); */
-
-
-  // Example of simple menu (items from StringList)
-  //Serial.println("Main Menu");
-  fabgl::StringList list;
-  list.append("PCEmulator"); //0
-  list.append("ChatterBox");
-  list.append("File Browser");
-  list.append("Update time");
-  list.append("JPG View");
-  //list.append("txt WebBrowser");
-  list.append("Web Radios");
-  list.append("Wifi Safe");
-  list.select(1, true);
-  //int s = ibox.menu("Applications list", "Click on an item", &list);
-  int s = ibox.menu("Applications", "choose the app", &list);
-  if (s == 0) {
-    if (hasSD == false) ibox.message("Error!", "microSD-CARD not found!", nullptr, nullptr); 
-    else PCEmulator();
-  }
-  if (s == 1) {
-    //Initialise SPIFFS:
-    if(!SPIFFS.begin()){
-      Serial.println("SPIFFS Mount Failed");
-      return;
-    }  
-    ChatterBox();
-  }
-  if (s == 2) {
-    //rootWindow()->frameStyle().backgroundColor = RGB888(0, 0, 64);
-    //auto frame = new uiFrame(rootWindow(), "FileBrowser Example", Point(15, 10), Size(375, 275));
-    //frame->frameProps().hasCloseButton = false;
-    //fb = new uiFileBrowser(frame, Point(10, 25), Size(140, 180));
-    //fb->setDirectory("/");
-    FileBrowser::mountSPIFFS(FORMAT_ON_FAIL, SPIFFS_MOUNT_PATH);
-    ibox.folderBrowser("Browse Files", "/");
-    //ibox.folderBrowser("Browse Files", SPIFFS_MOUNT_PATH);
-    //ibox.folderBrowser("Browse Files", SD_MOUNT_PATH);
-  }
-  if (s == 3) updateDateTime();
-  if (s == 4) {
-    JPGView();
-  }
-  if (s == 5) {
-    //News();
-    WebRadios();
-  }
-  if (s == 6) WifiSafe();
-  //if (s == 7) 
-  //if (s == 8) 
-  //if (s == 9) 
-  //Serial.println("string list ok");
-  //delay(1000);
-  //ibox.messageFmt("", nullptr, "OK", "You have selected item %d", s);
-
-
-
-
-
-   /* switch (r) {
-      case InputResult::ButtonExt0:
-        // App PCEMulator
-        PCEmulator();
-        break;
-      case InputResult::ButtonExt1:
-        // App ChatterBox
-        ChatterBox();
-        break;
-      case InputResult::ButtonExt2:
-        // App JPG View
-        JPGView();
-        break;
-      case InputResult::ButtonExt3:
-        // conect to internet and update date/time
-        updateDateTime();
-        break;
-      //case InputResult::ButtonExt4:
-        // File Browser
-      //  fileBrowser = new uiFileBrowser(frame, Point(10, 25), Size(140, 180));
-      //  fileBrowser->setDirectory("/");
-      //  break;
-      case InputResult::Enter:
-        showDialog = false;
-        break;
-        default:
-        break;
+    list.select(0, true);
+    //int s = ibox.menu("Applications list", "Click on an item", &list);
+    int s = ibox.menu("Applications", "choose the app", &list);
+    if (s == 0) {
+      //if (hasSD == false) ibox.message("Error!", "microSD-CARD not found!", nullptr, nullptr); 
+      PCEmulator();
     }
-    // next selection will not have timeout
-    ibox.setAutoOK(0); 
-  // }
-  */
+    if (s == 1) {
+      //Initialise SPIFFS:
+      if(!SPIFFS.begin()){
+        Serial.println("SPIFFS Mount Failed");
+        return;
+      }  
+      ChatterBox();
+    }
+    if (s == 2) {
+      //rootWindow()->frameStyle().backgroundColor = RGB888(0, 0, 64);
+      //auto frame = new uiFrame(rootWindow(), "FileBrowser Example", Point(15, 10), Size(375, 275));
+      //frame->frameProps().hasCloseButton = false;
+      //fb = new uiFileBrowser(frame, Point(10, 25), Size(140, 180));
+      //fb->setDirectory("/");
+      if (!FileBrowser::mountSDCard(false, SD_MOUNT_PATH, 8)){ // @TODO: reduce to 4?
+      //ibox.message("", "microSD-CARD not found!", nullptr, nullptr); 
+      hasSD = false;
+        Serial.println("SD not Found. ");
+      }
+      else {
+        hasSD = true;
+        Serial.println("SD Found. ");
+      }
+      FileBrowser::mountSPIFFS(FORMAT_ON_FAIL, SPIFFS_MOUNT_PATH);
+      ibox.folderBrowser("Browse Files", "/");
+      //ibox.folderBrowser("Browse Files", SPIFFS_MOUNT_PATH);
+      //ibox.folderBrowser("Browse Files", SD_MOUNT_PATH);
+    }
+    if (s == 3) JPGView(); // updateDateTime();
+    if (s == 4) {
+      WebRadios();
+    }
+    if (s == 5) {
+      //News();
+      AudioPlayer();
+    }
+    if (s == 6) WifiSafe();
+    //if (s == 7) 
+    //if (s == 8) 
+    //if (s == 9) 
+  }
+  
+  else if (audioMode == true) { // Audio mode on
+    
+    // take a keypress
+    Serial.println("take a keypress");
+    int scode = PS2Controller::keyboard()->getNextScancode();
+    Serial.println(scode);
+    
+    if (scode == 22) { // 1 WebRádios
+      WebRadios();
+    }
+    else if (scode == 30) { // 2 Chat server
+      ChatterBox();
+    }
+    else if (scode == 38) { // 3 MP3 Player
+      //if (hasSD == true) { // Tem cartão SD
+        AudioPlayer();
+      //}
+      //else {
+      //  Serial.println("SD Mount Failed");
+      //}
+    }
+
+     /* audio.connecttoFS(SD, "/press.mp3");
+      audio.connecttoFS(SD, "/one.mp3");
+      audio.connecttoFS(SD, "/for.mp3");
+      audio.connecttoFS(SD, "/internet.mp3");
+      audio.connecttoFS(SD, "/radio.mp3"); */
+    //}
+    /* File file = root.openNextFile();
+  while(file){
+    if(file.isDirectory()){
+      Serial.print("  DIR : ");
+      Serial.println(file.name());
+      String dir = file.name();
+      if (dir == "/VGA32Audio") {
+        Serial.println("/VGA32Audio exists.");
+
+      audio.connecttoFS(SD, "/welcome.mp3");
+      
+      audio.connecttoFS(SD, "/press.mp3");
+      audio.connecttoFS(SD, "/one.mp3");
+      audio.connecttoFS(SD, "/for.mp3");
+      audio.connecttoFS(SD, "/internet.mp3");
+      audio.connecttoFS(SD, "/radio.mp3");
+      break;
+      /*  File file2 = file.openNextFile();
+        while(file2){
+          String filename = file2.name();
+          if (filename.endsWith(".mp3")) {
+            Serial.print("tocar:");
+            Serial.print(filename);
+            audio.connecttoFS(SD,file2.name());
+          }
+          file2 = file.openNextFile();
+        } 
+      }
+    }
+  file = root.openNextFile();
+  } */
+      
+      
+     /* audio.connecttoFS(SD, "/audio.mp3");
+      audio.connecttoFS(SD, "/welcome.mp3");
+      
+      
+
+      audio.connecttoFS(SD, "/VGA32Audio/press.mp3");
+      audio.connecttoFS(SD, "/VGA32Audio/two.mp3");
+      audio.connecttoFS(SD, "/VGA32Audio/for.mp3");
+      audio.connecttoFS(SD, "/VGA32Audio/chat.mp3");
+      audio.connecttoFS(SD, "/VGA32Audio/server.mp3");
+
+      audio.connecttoFS(SD, "/VGA32Audio/press.mp3");
+      audio.connecttoFS(SD, "/VGA32Audio/three.mp3");
+      audio.connecttoFS(SD, "/VGA32Audio/for.mp3");
+      audio.connecttoFS(SD, "/VGA32Audio/mp3.mp3");
+      audio.connecttoFS(SD, "/VGA32Audio/player.mp3"); */
+      
+    }
+    
+    /* // take a keypress
+    int scode = PS2Controller::keyboard()->getNextScancode();
+    Serial.println(scode);
+    if (scode == 22) { // 1
+      // WebRadios
+      WebRadios();
+    }
+    else if (scode == 30) { // 2
+      //ChatterBox bate papo horizontal
+      ChatterBox();
+    } */
+
+    /* else if (scode == 38) { // 3 MP3 Player
+
+    }
+    else if (scode == 37) { // 4
+
+    }
+    else if (scode == 46) { // 5
+
+    }
+    else if (scode == 54) { // 6
+
+    }
+    else if (scode == 61) { // 7
+
+    }
+    else if (scode == 62) { // 8
+      //
+
+    }
+    else if (scode == 70) { // 9
+
+    }
+    else if (scode == 69) { // 0
+
+    } */
+  delay(500);
 }
 
-//O sketch usa 1766738 bytes (56%) de espaço de armazenamento para programas. O máximo são 3145728 bytes.
-//Variáveis globais usam 57456 bytes (17%) de memória dinâmica, deixando 270224 bytes para variáveis locais. O máximo são 327680 bytes.
+//O sketch usa 1776202 bytes (56%) de espaço de armazenamento para programas. O máximo são 3145728 bytes.
+//Variáveis globais usam 57464 bytes (17%) de memória dinâmica, deixando 270216 bytes para variáveis locais. O máximo são 327680 bytes.
