@@ -1,6 +1,15 @@
 # PCEmulatorPlus
 The PCEmulator by Fabrizio Di Vittorio plus more applications for a more complete system.
 
+Now you'll also be able to listen to audio files (mp3, wav, ...) directly from the micro SD card. Adding this functionality required a lot of system resources and is therefore severely limited.
+Limitations:
+- Mono only
+- No controls, you will have to change the volume on the device you are using as a speaker.
+- Only 1 audio file at a time.
+
+This functionality will probably be changed in future versions since the plan is to have applications that work without needing a display and the way 'Audio Player' is currently working still has this need.
+
+
 Release 0.6:
 Now with Webradios!
 
