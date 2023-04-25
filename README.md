@@ -1,6 +1,41 @@
 # PCEmulatorPlus
 The PCEmulator by Fabrizio Di Vittorio plus more applications for a more complete system.
 
+Apps:
+- PCEmulator by Fabrizio Di Vittorio;
+- ChatterBox (Horizontal chat server);
+- File Browser;
+- Jpg View (see images from internal memory);
+- Web Radios (Online Radios from many countrys);
+- Audio Player (play .mp3, .wav, etc. from SD);
+- Wi-fi Safe (test security of wifi);
+- Audio Maker (comming soon!)
+
+See the wiki for limitations and how to use this system.
+
+The system is being designed to work even if part of the hardware is unavailable, thus avoiding the production of electronic waste in the event of a component failure.
+What works without...
+- microSD card: ChatterBox, Web Radios, Wi-fi Safe, 
+- Sound output: Wi-fi Safe, File Browser, Jpg View, 
+- Wi-Fi: Audio Player, File Browser, Jpg View, 
+- Mouse: PCEmulator, File Browser, Jpg View, 
+- Keyboard: File Browser, ChatterBox, Wi-fi Safe,
+- PSRAM: ChatterBox, Wi-fi Safe, File Browser, 
+- VGA output: ChatterBox, Web Radios, Audio Maker (comming soon!)
+
+Theoretically, some applications can even be used by a blind person if an accessible keyboard is connected.
+
+Used libs:
+FabGL by Fabrizio Di Vittorio version 1.0.9 https://github.com/fdivitto/FabGL/releases/tag/v1.0.9
+TJpg_Decoder by Bodmer version 0.0.2 https://github.com/Bodmer/TJpg_Decoder/releases/tag/0.0.2
+ESP32-audioI2S por Wolle https://github.com/schreibfaul1/ESP32-audioI2S
+And
+Board arduino-esp32 by espressif version 1.0.6 https://github.com/espressif/arduino-esp32/releases/tag/1.0.6
+
+
+
+Release 0.7 notes:
+
 Now you'll also be able to listen to audio files (mp3, wav, ...) directly from the micro SD card. Adding this functionality required a lot of system resources and is therefore severely limited.
 Limitations:
 - Mono only
