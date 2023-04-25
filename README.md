@@ -2,7 +2,7 @@
 The PCEmulator by Fabrizio Di Vittorio plus more applications for a more complete system. For the TTGO VGA32 board and compatibles.
 
 Apps:
-- PCEmulator by Fabrizio Di Vittorio;
+- PCEmulator (IBM PC/XT emulator with CGA and Hercules graphics);
 - ChatterBox (Horizontal chat server);
 - File Browser;
 - Jpg View (see images from internal memory);
