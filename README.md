@@ -1,5 +1,5 @@
 # PCEmulatorPlus
-The PCEmulator by Fabrizio Di Vittorio plus more applications for a more complete system. For the TTGO VGA32 board and compatibles.
+The PCEmulator by Fabrizio Di Vittorio plus applications for a more complete system. For the TTGO VGA32 board and compatibles.
 
 Apps:
 - PCEmulator (IBM PC/XT emulator with CGA and Hercules graphics);
