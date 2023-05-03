@@ -2,6 +2,7 @@
 The PCEmulator by Fabrizio Di Vittorio plus applications for a more complete system. For the TTGO VGA32 board and compatibles.
 
 Apps:
+-- With Display:
 - PCEmulator (IBM PC/XT emulator with CGA and Hercules graphics);
 - ChatterBox (Horizontal chat server);
 - File Browser;
@@ -9,7 +10,11 @@ Apps:
 - Web Radios (Online Radios from many countrys);
 - Audio Player (play .mp3, .wav, etc. from SD);
 - Wi-fi Safe (test security of wifi);
-- Audio Maker (comming soon!)
+-- With Audio:
+1) Web Radios
+2) Chat Server
+3) Audio Maker
+4) Timer
 
 See the wiki for limitations and how to use this system.
 
@@ -21,7 +26,7 @@ What works without...
 - Mouse: PCEmulator, File Browser, Jpg View, 
 - Keyboard: File Browser, ChatterBox, Wi-fi Safe,
 - PSRAM: ChatterBox, Wi-fi Safe, File Browser, 
-- VGA output: ChatterBox, Web Radios, Audio Maker (comming soon!)
+- VGA output: ChatterBox, Web Radios, Audio Maker 
 
 Theoretically, some applications can even be used by a blind person if an accessible keyboard is connected.
 
