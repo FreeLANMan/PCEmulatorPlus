@@ -71,6 +71,9 @@ extern "C" {
 
 FileBrowser fb("/");
 
+//m_soundGenerator     m_soundGen;
+SoundGenerator           m_soundGen;
+
 //#define SD_MOUNT_PATH "/SD"
 
 #define SPIFFS_MOUNT_PATH  "/flash"
@@ -1091,6 +1094,10 @@ void ChatterBox()
 {
   // the app use another way so:
   //SPIFFS.end();
+
+  //Unmound SD
+  FileBrowser::unmountSDCard();
+  Serial.println("Card unMount!"); 
   
   //Initialise SPIFFS:
     if(!SPIFFS.begin()){
@@ -1192,7 +1199,7 @@ void JPGView()
 
 
 // App WebBrowser, no, download file now.
-void DownloadFile() {
+/* void DownloadFile() {
   // download file button
   //auto downloadBtn = new uiButton(frame, "Download", Point(260, 50), Size(90, 20));
   //downloadBtn->onClick = [=]() {
@@ -1215,7 +1222,7 @@ void DownloadFile() {
   }
       //updateFreeSpaceLabel();
    
-}
+} */
 
 
 
@@ -1224,19 +1231,6 @@ void WifiSafe() { // app Wi-Fi Seguro
   int senhaDesconhecida = 1;
   byte RedeSelecionada = 0;
   String RedeAlvo = " ";
-  //String redes[] { " ", " ", " ", " "};
-  //char SSID[32] = "";
-  //char psw[32]  = "";
-  //while (senhaDesconhecida == 1) {
-
-  // try to start SD
-  /* if (!FileBrowser::mountSDCard(false, SD_MOUNT_PATH, 8))   // @TODO: reduce to 4?
-    ibox.message("Error!", "This app requires a SD-CARD!", nullptr, nullptr); */
-
-    // Encontrar as redes de Wi-Fi
-    //WiFi.disconnect(); //disconecta da rede em que está (se está em alguma)
-    //scanAndSort2(); //função que scaneia e classifica as redes com senhas
-    //delay(WIFI_DELAY);
 
     //Escolha da rede
     int n = WiFi.scanNetworks(); // escaneia e analiza as redes disponíveis
@@ -1245,18 +1239,7 @@ void WifiSafe() { // app Wi-Fi Seguro
       Serial.println("no networks found");
       ibox.message("Error!", "No networks found!");
     } 
-    /* else {
-      Serial.print(n);
-      for (int j = 0; j < 4; ++j) { // Para cada vaga de rede....
-        for (int i = 0; i < n; ++i) { // Para cada rede encontrada....
-          if ((WiFi.encryptionType(i) != 7) and (redes[j] != WiFi.SSID(i)) and (redes[j-1] != WiFi.SSID(i)) and (redes[j-2] != WiFi.SSID(i)) and (redes[j-3] != WiFi.SSID(i))) {
-            redes[j] = WiFi.SSID(i);
-          }
-          // WiFi.encryptionType(i) != 7 = sem senha
-        }
-        Serial.println(String(redes[j]));
-      }
-    } */
+
     StringList list;
     for (int i = 0; i < n; ++i)
       list.appendFmt("%s (%d dBm)", WiFi.SSID(i).c_str(), WiFi.RSSI(i));
@@ -1271,12 +1254,7 @@ void WifiSafe() { // app Wi-Fi Seguro
     if (RedeAlvo != " ") {
 
       // se senha = nome da rede
-      
-      //WiFi.begin(RedeAlvo, RedeAlvo);
-      //WiFi.begin(char(RedeAlvo), char(RedeAlvo));
-      //ibox.message(String(RedeAlvo),String(RedeAlvo));
-      //ibox.message(RedeAlvo.c_str(),RedeAlvo.c_str(),nullptr);
-      //form->update(i * 100 / 12, "Getting date-time from SNTP...");
+
       ibox.progressBox("trying to connect", nullptr, false, 200, [&](fabgl::ProgressForm * form) {
         form->update(0, RedeAlvo.c_str()); 
         WiFi.begin(RedeAlvo.c_str(), RedeAlvo.c_str());
@@ -1297,13 +1275,6 @@ void WifiSafe() { // app Wi-Fi Seguro
         //linha4 = "Senha Correta!";
         ibox.message("password found", RedeAlvo.c_str(), nullptr, "Ok");
         senhaDesconhecida = 0;
-        //break;
-        /*if (digitalRead(esquerdo) == HIGH) {
-          //Serial.println("esquerdo apertado");
-          //delay(170); // espera para cada apertada ser vista individualmente 
-          tela = 0; // voltar pelo menu
-          break;
-        }*/
       }
 
       // se senha = nome da rede, todas letras minusculas
@@ -1390,30 +1361,12 @@ void WifiSafe() { // app Wi-Fi Seguro
     }  
     File f = SPIFFS.open("/Senhas.dat", "r"); // r = abrir para leitura
     String line = "senha secretaentra sua senha";
-    //char psw[32]  = "";
-    //while(senhaDesconhecida == 1) {
+    
     while(f.available()) {
     
       WiFi.softAPdisconnect();
       delay(500);
-      //delay(1000);
-      //File f = SPIFFS.open("/Senhas.dat", "r"); // r = abrir para leitura
-      /* if (digitalRead(esquerdo) == HIGH) {
-        //Serial.println("esquerdo apertado");
-        //delay(170); // espera para cada apertada ser vista individualmente 
-        tela = 0; // voltar pelo menu
-      } */
-      //Serial.println("Fim do loop3");
       line = f.readStringUntil('\n');
-      //Serial.println("Fim do loop2");
-      //delay(500);
-      //psw = f.readStringUntil('\n'); //incompatible types in assignment of 'String' to 'char [32]'
-      //psw = (f.readStringUntil('\n')).c_str(); //incompatible types in assignment of 'const char*' to 'char [32]'
-      //strcpy(psw, String(f.readStringUntil('\n'))); //cannot convert 'String' to 'const char*' for argument '2' to 'char* strcpy(char*, const char*)'
-      //psw = String(f.readStringUntil('\n')); //incompatible types in assignment of 'String' to 'char [32]'
-      //psw = getString(f.readStringUntil('\n')); //'getString' was not declared in this scope
-      // strcpy(psw, line); //cannot convert 'String' to 'const char*' for argument '2' to 'char* strcpy(char*, const char*)'
-      //ibox.message(RedeAlvo.c_str(),line.c_str());
       Serial.println(line);
       ibox.progressBox("trying to connect", nullptr, false, 200, [&](fabgl::ProgressForm * form) {
         form->update(0, line.c_str()); 
@@ -1452,7 +1405,7 @@ void WifiSafe() { // app Wi-Fi Seguro
     }
     // if the next app use another way:
     SPIFFS.end();
-}
+} // app Wi-Fi Safe end
 
 
 
@@ -1461,63 +1414,31 @@ void WebRadios()
 {
   Serial.println("WebRadio Player Start! ");
 
-  //Serial.println(ESP.getFreeHeap());
-
-  /*if(psramInit()){
-          Serial.println("\nThe PSRAM is correctly initialized");
-  }else{
-          Serial.println("\nPSRAM does not work");
-  } */
-
-  //max_stations= sizeof(stations)/sizeof(stations[0]); log_i("max stations %i", max_stations);
-
-  /* pref.begin("WebRadio", false);  // instance of preferences for defaults (station, volume ...)
-  if(pref.getShort("volume", 1000) == 1000){ // if that: pref was never been initialized
-      pref.putShort("volume", 7);
-      pref.putShort("station", 0);
-  }
-  else{ // get the stored values
-      cur_station = pref.getShort("station");
-      cur_volume = pref.getShort("volume");
-      //cur_volume = 7;
-  } */
-
-  // connect to wifi
   /* Clear previous modes. */
   WiFi.softAPdisconnect();
   WiFi.disconnect();
 
   //heap_caps_dump_all(); reset the system
-
-  /*WiFi.begin("CarmemCurute","19842806");
-  while (WiFi.status() != WL_CONNECTED){
-      delay(2000);
-      Serial.print(".");
-  } */
   
+  // connect to wifi
   tryToConnect();
   
   // No more display needed
   ibox.end();
-  
-  //Serial.println("Increasing buffer size. ");
+
   Audio audio(true, 1, 0);
   audio.setBufsize(15000, 0);
 
-  //ESP.getFreeHeap()
   cur_volume = 6;
   audio.setVolume(cur_volume); // 0...21
   //cur_station = 0;
+  int language = 0; // 0 = no language, 1 = portugues
   
-  audio.connecttohost("https://prod-52-91-107-216.wostreaming.net/goodkarma-wknramaac-ibc2"); // ESPN 850 AM news talk sports USA
-
+  audio.connecttohost("https://prod-52-91-107-216.wostreaming.net/goodkarma-wknramaac-ibc2"); // ESPN 850 AM news talk sports USA OK!
+  
   //loop
   while (1) {
     audio.loop();
-    
-    // take a keypress
-    //int scode = PS2Controller::keyboard()->getNextScancode();
-    //Serial.println(scode);
 
     if (PS2Controller::keyboard()->scancodeAvailable()) {
       int scode = PS2Controller::keyboard()->getNextScancode();
@@ -1530,87 +1451,99 @@ void WebRadios()
         audio.setVolume(cur_volume);
       }
       else if (scode == 22) { // 1
-        //audio.connecttospeech("Gaúcha, Brasil.", "pt"); 
-        audio.connecttohost("https://1132747t.ha.azioncdn.net/primary/gaucha_rbs.sdp/chunklist_47ea98af-3f33-4a88-9628-a617e3e40466.m3u8"); // News Porto Alegre - RS OK 25/3
+        if (language == 0) // many languages
+        audio.connecttohost("https://jenny.torontocast.com:2000/stream/j1gold/stream?1683063865715"); // Radio J1 Gold Tóquio / Japão Server: Canada OK!
+        // "https://jenny.torontocast.com:2000/stream/j1hits/stream?1683063993885"); // Radio J1 Hits Tóquio / Japão
+        else if (language == 1) // Portugues
+          audio.connecttohost("https://1132747t.ha.azioncdn.net/primary/gaucha_rbs.sdp/chunklist_47ea98af-3f33-4a88-9628-a617e3e40466.m3u8"); // Rádio Gaúcha Brasil Server:Brazil OK!
+        else if (language == 2) // LAN
+          audio.connecttohost("http://10.42.0.1/audio.m3u"); // open a file call 'audio.m3u in a Linux computer router wifi and webserver started.
       }
       else if (scode == 30) { // 2
-        //audio.connecttospeech("92 FM, Brasil.", "pt");
-        //audio.connecttomarytts("92 FM, Brasil.", "pt","bits1");
-        audio.connecttohost("https://aovivord92fm.rbsdirect.com.br/memorystreams/HLS/92fm/92fm-32000.m3u8"); // pop news talk brazilian  Server:Brazil OK 25/3
+        if (language == 0) 
+          audio.connecttohost("https://zas7.ndx.co.za:8004/stream?1683061591597"); // Alex 89.1 FM Johanesburgo / África do Sul English Server:German OK!
+        else if (language == 1) 
+          audio.connecttohost("https://aovivord92fm.rbsdirect.com.br/memorystreams/HLS/92fm/92fm-32000.m3u8"); //92 FM pop news talk brazilian  Server:Brazil OK!
+        else if (language == 2) 
+          audio.connecttohost("http://192.168.43.1:8080/audio.mp3"); // open a file call 'audio.mp3 in a Android phone with router wifi and webserver app started.
       }
       else if (scode == 38) { // 3
-        audio.connecttospeech("Business 87.5 FM, Russia.", "en");
-        audio.connecttohost("http://bfm.hostingradio.ru:8004/fm?1679613025750"); // Business 87.5 FM Moscow / Russia OK 25/3 (slow in brasil)
+        if (language == 0) 
+          audio.connecttohost("stream.1a-webradio.de/deutsch/mp3-128/vtuner-1a"); //05 1A Deutsche Hits Deutsch Server:Finland OK!
+        else if (language == 1) 
+          audio.connecttohost("http://8903.brasilstream.com.br:8903/stream?1683061799699"); //Rádio Itatiaia 610 AM 95.7 FM Belo Horizonte / MG - Brasil Server:Brazil OK!
       }
       else if (scode == 37) { // 4
-        audio.connecttospeech("Radio 10, Argentina.", "en");
-        audio.connecttohost("https://radio10.stweb.tv/radio10/live/chunks.m3u8"); // Radio 10 pop news talk latin OK 25/3
+        if (language == 0) 
+          audio.connecttohost("https://stream.dashitradio.de/dashitradio/mp3-128/stream.mp3"); //DAS HITRADIO Deutsch English Server:Germany  OK!
+        else if (language == 1) 
+          audio.connecttohost("https://17513.live.streamtheworld.com/NOVABRASIL_SPAAC.aac"); //Nova Brasil FM news talk brazilian Server: Canada OK!
       }
       else if (scode == 46) { // 5
-        audio.connecttohost("https://streaming.fabrik.fm/voc/echocast/audio/low/index.m3u8"); // Voice of the Cape news talk South Africa Server:South Africa OK 25/3
+        if (language == 0) 
+          audio.connecttohost("https://streaming.fabrik.fm/voc/echocast/audio/low/index.m3u8"); // Voice of the Cape news talk South Africa Server:South Africa OK!
+        else if (language == 1) 
+          audio.connecttohost("https://22063.live.streamtheworld.com/JBFMAAC1.aac"); //Rádio JBFM dance pop news talk hits Brasil Server: USA OK!
       }
       else if (scode == 54) { // 6
-        audio.connecttohost("0n-80s.radionetz.de:8000/0n-70s.mp3"); //  0 N - 70s on Radio Deutsch Server:Germany OK 25/3
+        if (language == 0) 
+          audio.connecttohost("0n-80s.radionetz.de:8000/0n-70s.mp3"); //  0 N - 70s on Radio Deutsch Server:Germany OK!
+        else if (language == 1) 
+          audio.connecttohost("http://13.stmip.net:9274/stream?1679232550177"); // Jornal 91.3 FM Aracaju / SE - Brasil Português Server:USA OK!
       }
       else if (scode == 61) { // 7
-        audio.connecttohost("https://stream2.cnmns.net/paradisefm"); //Paradise FM pop news talk oldies Server:Australia OK 25/3
+        if (language == 0) 
+          audio.connecttohost("https://stream2.cnmns.net/paradisefm"); //Paradise FM pop news talk oldies Server:Australia OK!
+        else if (language == 1) 
+        audio.connecttohost("https://stream-073.zeno.fm/utfkkxfawp8uv"); //  MFM Radio 91.7 Luanda / Angola Server: Canada OK!
       }
       else if (scode == 62) { // 8
-        //audio.connecttohost("http://61.89.201.27:8000/radikishi.mp3"); // Radio Kishiwada Japan pop news talk classic ethnic Server:Japan failed!
-        audio.connecttohost("https://stream-icy.bauermedia.pt/comercial.aac"); // Radio Comercial Portugal pop news folk Server:UK OK 25/3
+        if (language == 0) 
+          audio.connecttohost("listen.rusongs.ru/ru-mp3-128"); // RUSSIAN SONGS Server:Russia OK!
+        else if (language == 1) 
+          audio.connecttohost("https://radios.vpn.sapo.pt/AO/radio3.mp3?1682556173856"); // Rádio Canal A 93.5 FM Luanda / Angola Server: Portugal OK!
       }
       else if (scode == 70) { // 9
-        audio.connecttohost("https://rhema-radio.streamguys1.com/rhema-star.mp3"); // Star FM talk christian  Server:NZ OK 25/3 (slow in brasil)
+        if (language == 0) 
+          audio.connecttohost("https://rhema-radio.streamguys1.com/rhema-star.mp3"); // Star FM talk christian  Server:NZ English OK!
+        else if (language == 1) 
+          audio.connecttohost("http://95.217.75.38:7988/stream?1683064180842"); // Rádio Golo 89.2 FM Lisboa / Portugal Server: Finland OK!
       }
       else if (scode == 69) { // 0
-        audio.connecttohost("http://10.42.0.1/audio.m3u"); // open a file call 'audio.m3u in a Linux computer router wifi and webserver started. (opening an access point in Linux)
+        if (language == 0) 
+          audio.connecttohost("https://sp3.servidorrprivado.com:10906/;stream.nsv"); //Radio Fénix 1330 AM news talk sports community Montevideo Argentina Server: Canada Espanish OK! 
+        else if (language == 1) 
+          audio.connecttohost("http://s1.xps-ip.eu:8118/stream?1683062052432"); // Nova Memória Matosinhos / Portugal Server:France fail! OK! Slow in Brazil
       }
-      //else if (scode == 69) { // 0
-      //  audio.connecttohost("http://10.42.0.1/audio.m3u"); // open a file call 'audio.m3u in a Linux computer router wifi and webserver started. 
-      //}
-      /* else if (scode == 116){  // the list of urls spend much memory
-        if (cur_station<max_stations-1) cur_station++;
-        else cur_station = 0;
-        audio.connecttohost(stations[cur_station].c_str());
+      else if (scode == 77) {  // p for portugues
+        language = 1;
+        audio.connecttohost("https://1132747t.ha.azioncdn.net/primary/gaucha_rbs.sdp/chunklist_47ea98af-3f33-4a88-9628-a617e3e40466.m3u8"); // Rádio Gaúcha Brasil Server:Brazil OK!
       }
-      else if (scode == 107){
-        if (cur_station>0) cur_station--;
-        else cur_station = max_stations-1;
-        audio.connecttohost(stations[cur_station].c_str());
-      } */
+      else if (scode == 75) {  // l for LAN 
+        language = 2;
+        audio.connecttohost("http://10.42.0.1/audio.m3u"); // open a file call 'audio.m3u in a Linux computer router wifi
+      }
+      else if (scode == 29) {  // w for world
+        language = 0;
+        audio.connecttohost("https://prod-52-91-107-216.wostreaming.net/goodkarma-wknramaac-ibc2"); // ESPN 850 AM news talk sports USA
+      }
       else if (scode == 102) {  // get out backspace
         esp_restart();
       }
-                                
-    //xprintf("%02X ", scode);
-    //if (scode == 0xF0 || scode == 0xE0) ++clen;
-    //--clen;
-    //if (clen == 0) {
-    //  clen = 1;
-    //  xprintf("\r\n");
-    //}
     Serial.println(scode);
-  }
+    }
 
     
   }
 
-}
+} // App Web Radios
 
 
 
 void AudioPlayer(){
   Serial.println("Audio Player started");
 
-  /* Serial.print( "fAlarm " );
-  Serial.print(uxTaskGetStackHighWaterMark( NULL ));
-  Serial.println();
-  Serial.flush(); */
-
-  //ibox.textInput("Audio Player", "Path", path, sizeof(path), "Cancel", "OK",false);
-
   if (!FileBrowser::mountSDCard(false, SD_MOUNT_PATH, 8)){ // @TODO: reduce to 4?
-    //ibox.message("", "microSD-CARD not found!", nullptr, nullptr); 
     hasSD = false;
     Serial.println("SD not Found. ");
   }
@@ -1620,48 +1553,26 @@ void AudioPlayer(){
   }
 
   char filename[50] = "/";
-  //String filename;
   char directory[50];
   strcpy(directory, "/");
   if (ibox.fileSelector("Audio Player", "Filename: ", directory, sizeof(directory) - 1, filename, sizeof(filename) - 1) == InputResult::Enter) {
-  //if (ibox.fileSelector("File Select", "Filename: ", directory, sizeof(directory) - 1, filename, sizeof(filename)) == InputResult::Enter) {
-    //directory += filename;   - invalid use of non-lvalue array
-    Serial.print("directory: ");
-    Serial.println(directory);
-    //filename = "/" + filename;  //invalid use of non-lvalue array
-    //'/' += filename; invalid use of non-lvalue array
-    //filename[16] = "/" + filename; invalid operands of types 'const char [2]' and 'char [16]' to binary 'operator+'
-    //filename[16] = "/" += filename; invalid use of non-lvalue array
-    Serial.print("filename: ");
-    Serial.println(filename);
+    //Serial.print("directory: ");
+    //Serial.println(directory);
+    //Serial.print("filename: ");
+    //Serial.println(filename);
   }
-    //String filen;
-    //String diren;
-    //String filen = directory + filename; //invalid operands of types 'char [32]' and 'char [50]' to binary 'operator+'
-    //strcpy(diren,directory);
-    //strcpy(filen,filename); //cannot convert 'String' to 'char*' for argument '1' to 'char* strcpy(char*, const char*)'
-    //filen = diren + filen;
-    //directory =+ filename; incompatible types in assignment of 'char*' to 'char [32]'
-    //String diren = toString(directory); //'toString' was not declared in this scope
-    //String filen = toString(filename);
-    //filen = filen + diren;
     char filen[strlen(directory)+strlen(filename)+1] = "";
     strcat(filen,directory);
     Serial.print("filen: ");
     Serial.println(filen);
     strcat(filen,"/");
     strcat(filen,filename);
-    Serial.print("filen: ");
-    Serial.println(filen);
-    //strcpy (filen,filen[5].c_str());
-    //filen.erase (0,5); //request for member 'erase' in 'filen', which is of non-class type 'char
-
+    //Serial.print("filen: ");
+    //Serial.println(filen);
     String filen2;
     filen2 += filen;
-    Serial.print("filen2: ");
-    Serial.println(filen2);
-    //filen2.erase(0,5); //'class String' has no member named 'erase'
-    //std::string filen2 = filen2.substr(5); //conflicting declaration 'std::__cxx11::string filen2'
+    //Serial.print("filen2: ");
+    //Serial.println(filen2);
     filen2.remove(0, 3);  
     Serial.print("filen2: ");
     Serial.println(filen2);
@@ -1681,61 +1592,272 @@ void AudioPlayer(){
   // try to turn off the wifi
   WiFi.mode(WIFI_OFF);
 
-/*
- * Optional SD Card connections:
- *   MISO => GPIO 16  (2 for PICO-D4)
- *   MOSI => GPIO 17  (12 for PICO-D4)
- *   CLK  => GPIO 14
- *   CS   => GPIO 13 */
   //SD(SPI)
   pinMode(SD_CS, OUTPUT);
   digitalWrite(SD_CS, HIGH);
   SPI.begin(SPI_SCK, SPI_MISO, SPI_MOSI);
-  //Serial.println("pin3");
   SPI.setFrequency(1000000);
-  //Serial.println("pin4");
   if (!SD.begin(SD_CS, SPI)) {
       Serial.println("Card Mount Failed");
       //break;
   }
   else Serial.println("Card Mount Ok!");  
 
-  // get the path
-
-  /* auto r = ibox.textInput("MP3 Player", "Path", path, sizeof(path), "Cancel", "OK",false);
-  switch (r) {
-    case InputResult::ButtonExt1:
-      Serial.println(path);
-      //getDisk(URL);
-      //break;
-    case InputResult::Enter:
-      Serial.println(path);
-      //char const * filename = getDisk(URL);
-      //Serial.println(filename);
-      //readFile(SD, filename);
-      //break;
-  } */
-
-
-  
-  //Read SD
-  //file_num = get_music_list(SD, path, 0, file_list);
-  //Serial.print("Music file count:");
-  //Serial.println(file_num);
-  //Serial.println("All music:");
-  //for (int i = 0; i < file_num; i++)
-  //{
-  //    Serial.println(file_list[i]);
-  //}
-
   char filen3[filen2.length() + 1];
   //filen3 = filen2.c_str(); //incompatible types in assignment of 'const char*' to 'char [50]'
   strcpy(filen3,filen2.c_str()); 
   PlayAudio(filen3);
 
-  
 } // End of app MP3 Player
 
+
+
+void MusicMaker() {
+    Serial.println("Music Maker started");
+
+  fabgl::PS2Controller     PS2Controller;
+  //PS2Controller.begin(PS2Preset::KeyboardPort0_MousePort1, KbdMode::GenerateVirtualKeys);
+  PS2Controller.begin();
+  auto keyboard = PS2Controller.keyboard();
+
+  if (!keyboard->isKeyboardAvailable())  // if keyboard detected
+    {
+      ibox.message("", "Keyboard not found!", nullptr, nullptr);
+    }
+  //Unmound SD
+  FileBrowser::unmountSDCard();
+  Serial.println("Card unMount!"); 
+
+  // No more display needed
+  ibox.end();
+
+  SPIFFS.end();
+
+  // try to turn off the wifi
+  WiFi.mode(WIFI_OFF);
+
+  //m_soundGenerator         m_soundGen;
+
+//notes
+int c = 16; //do 
+int d = 18; //re 
+int e = 21; //mi
+int f = 22; //fa
+int g = 24; //sol
+int a = 28; // la
+int b = 31;  // si
+int cc = 32; // do
+//oitava
+int octave = 11; // octave = 1 means c -1 
+int duration = 90; 
+int effect = 0;
+int volume = 100;
+// duration ok: 10, 20, 
+
+  while (1){
+    //if (PS2Controller::keyboard()->scancodeAvailable()) {
+    //  int scode = PS2Controller::keyboard()->getNextScancode();
+    //if (keyboard->scancodeAvailable()) {
+      int scode = keyboard->getNextScancode();
+      Serial.println(scode);
+
+      // notes
+      if (scode == 28) { // a
+        if (effect == 0) m_soundGen.clear();
+        m_soundGen.playSound(SineWaveformGenerator(), c*octave, duration);  
+        if (effect == 1) m_soundGen.playSound(SineWaveformGenerator(), e*octave, duration/2);
+        else if (effect == 2) {
+          //m_soundGen.playSound(SineWaveformGenerator(), a*(octave-1), duration/2);  
+          //m_soundGen.playSound(SineWaveformGenerator(), f*(octave-1), duration/2);  
+          m_soundGen.playSound(SineWaveformGenerator(), c*(octave-1), duration/2, volume/2); 
+          m_soundGen.playSound(SineWaveformGenerator(), c*(octave-2), duration/2, volume/4);   
+        }
+      }
+      else if (scode == 27) { // s
+        if (effect == 0) m_soundGen.clear();
+        m_soundGen.playSound(SineWaveformGenerator(), d*octave, duration);   
+        if (effect == 1) m_soundGen.playSound(SineWaveformGenerator(), f*octave, duration/2);  
+        else if (effect == 2) {
+          //m_soundGen.playSound(SineWaveformGenerator(), b*(octave-1), duration/2);  
+          //m_soundGen.playSound(SineWaveformGenerator(), g*(octave-1), duration/2);  
+          m_soundGen.playSound(SineWaveformGenerator(), d*(octave-1), duration/2, volume/2);
+          m_soundGen.playSound(SineWaveformGenerator(), d*(octave-2), duration/2, volume/4);    
+        }
+      }
+      else if (scode == 35) { // d
+        if (effect == 0) m_soundGen.clear();
+        m_soundGen.playSound(SineWaveformGenerator(), e*octave, duration);  
+        if (effect == 1) m_soundGen.playSound(SineWaveformGenerator(), g*octave, duration/2); 
+        else if (effect == 2) {
+          //m_soundGen.playSound(SineWaveformGenerator(), c*octave, duration/2); 
+          //m_soundGen.playSound(SineWaveformGenerator(), a*(octave-1), duration/2);   
+          m_soundGen.playSound(SineWaveformGenerator(), e*(octave-1), duration/2, volume/2); 
+          m_soundGen.playSound(SineWaveformGenerator(), e*(octave-2), duration/2, volume/4);   
+        }
+      }
+      else if (scode == 43) { // f
+        if (effect == 0) m_soundGen.clear();
+        m_soundGen.playSound(SineWaveformGenerator(), f*octave, duration);  
+        if (effect == 1) m_soundGen.playSound(SineWaveformGenerator(), a*octave, duration/2);  
+        else if (effect == 2) {
+          //m_soundGen.playSound(SineWaveformGenerator(), d*octave, duration/2);  
+          //m_soundGen.playSound(SineWaveformGenerator(), b*(octave-1), duration/2);  
+          m_soundGen.playSound(SineWaveformGenerator(), f*(octave-1), duration/2, volume/2); 
+          m_soundGen.playSound(SineWaveformGenerator(), f*(octave-2), duration/2, volume/4);   
+        }
+      }
+      else if (scode == 52) { // g
+        if (effect == 0) m_soundGen.clear();
+        m_soundGen.playSound(SineWaveformGenerator(), g*octave, duration);  
+        if (effect == 1) m_soundGen.playSound(SineWaveformGenerator(), b*octave, duration/2);
+        else if (effect == 2) {
+          //m_soundGen.playSound(SineWaveformGenerator(), e*octave, duration/2);    
+          //m_soundGen.playSound(SineWaveformGenerator(), c*octave, duration/2);    
+          m_soundGen.playSound(SineWaveformGenerator(), g*(octave-1), duration/2, volume/2);  
+          m_soundGen.playSound(SineWaveformGenerator(), g*(octave-2), duration/2, volume/4);  
+        }
+      }
+      else if (scode == 51) { // h
+        if (effect == 0) m_soundGen.clear();
+        m_soundGen.playSound(SineWaveformGenerator(), a*octave, duration);  
+        if (effect == 1) m_soundGen.playSound(SineWaveformGenerator(), cc*octave, duration/2);  
+        else if (effect == 2) {
+          //m_soundGen.playSound(SineWaveformGenerator(), f*octave, duration/2);
+          //m_soundGen.playSound(SineWaveformGenerator(), d*octave, duration/2);
+          m_soundGen.playSound(SineWaveformGenerator(), a*(octave-1), duration/2, volume/2);  
+          m_soundGen.playSound(SineWaveformGenerator(), a*(octave-2), duration/2, volume/4);  
+        }
+      }
+      else if (scode == 59) { // j
+        if (effect == 0) m_soundGen.clear();
+        m_soundGen.playSound(SineWaveformGenerator(), b*octave, duration);  
+        if (effect == 1) m_soundGen.playSound(SineWaveformGenerator(), d*(octave+1), duration/2);  
+        else if (effect == 2) {
+          //m_soundGen.playSound(SineWaveformGenerator(), g*octave, duration/2);
+          //m_soundGen.playSound(SineWaveformGenerator(), e*octave, duration/2);
+          m_soundGen.playSound(SineWaveformGenerator(), b*(octave-1), duration/2, volume/2); 
+          m_soundGen.playSound(SineWaveformGenerator(), b*(octave-2), duration/2, volume/4);  
+        }
+      }
+      else if (scode == 66) { // k
+        if (effect == 0) m_soundGen.clear();
+        m_soundGen.playSound(SineWaveformGenerator(), cc*octave, duration);  
+          if (effect == 1) m_soundGen.playSound(SineWaveformGenerator(), e*(octave+1), duration/2);  
+          else if (effect == 2) {
+            //m_soundGen.playSound(SineWaveformGenerator(), a*octave, duration/2);
+            //m_soundGen.playSound(SineWaveformGenerator(), f*octave, duration/2);
+            m_soundGen.playSound(SineWaveformGenerator(), cc*(octave-1), duration/2, volume/2);  
+            m_soundGen.playSound(SineWaveformGenerator(), cc*(octave-2), duration/2, volume/4);  
+          }
+      }
+      // modify
+
+      else if (scode == 21) {  // q
+        if (octave > 1) octave = octave - 1;
+      }
+      else if (scode == 29) {  // w
+        if (octave < 15) octave = octave + 1;
+      }
+      else if (scode == 36) {  // e
+        if (duration > 10) duration = duration - 10;
+      }
+      else if (scode == 45) {  // r
+        if (duration < 2000) duration = duration + 10;
+      }
+      else if (scode == 44) {  // t
+        if (effect < 2) effect = effect + 1;
+        else if (effect == 2) effect = 0;
+      }
+      // exit
+      else if (scode == 102) {  // get out backspace
+        esp_restart();
+      }
+      //Serial.print("Duration: ");
+      //Serial.println(duration);
+      //Serial.print("octave: ");
+      //Serial.println(octave);
+      //Serial.print("effect: ");
+      //Serial.println(effect);
+  }
+    
+  //}
+} //End of app MusicMaker
+
+
+
+// App Timer no video
+void TimerApp() {
+  Serial.println("TimerApp started");
+
+  //m_soundGenerator         m_soundGen;
+
+  if (m_soundGen.playing()) m_soundGen.clear();
+  delay(500);
+  //m_soundGenerator         m_soundGen;
+  m_soundGen.playSound(SineWaveformGenerator(), 158, 300);  //Re#
+  m_soundGen.clear();
+  m_soundGen.playSound(SineWaveformGenerator(), 163, 300);  //Mi
+  
+  //m_soundGen.playSound(SineWaveformGenerator(), 233, 100);  // Y
+  //m_soundGen.playSound(SineWaveformGenerator(), 411, 300);  // es
+  //m_soundGen.playSound(SineWaveformGenerator(), 158, 500);  //Re#
+  //delay(500);
+  //if (m_soundGen.playing()) m_soundGen.clear();
+  //m_soundGen.playSound(SineWaveformGenerator(), 163, 500);  //Mi
+  //delay(500);
+  //if (m_soundGen.playing()) m_soundGen.clear();
+  //m_soundGen.playSound(SineWaveformGenerator(), 158, 500);  //Re#
+  //m_soundGen.clear(); 
+  //m_soundGen.playSound(SineWaveformGenerator(), 163, 100);  //Mi
+
+  
+  long tempo = 1; // 1 = 1min
+  char ctempo[5] = "";
+  // user choose minutes
+  ibox.setAutoOK(0);
+  auto r = ibox.textInput("Timer", "Time (minutes):", ctempo, 6, nullptr, "OK",false);
+  switch (r) {
+    //case InputResult::ButtonExt1:
+    //Serial.println(URL);
+    //getDisk(URL);
+    //break;
+    case InputResult::Enter:
+    Serial.print("ctempo: ");
+    Serial.println(ctempo);
+    break;
+  }
+  //String stempo;
+  //stempo += ctempo;
+  char *ptr;
+  //tempo = stoi(ctempo); //'stoi' was not declared in this scope
+  //tempo = int(stempo); //invalid cast from type 'String' to type 'int'
+  tempo = strtol(ctempo, &ptr, 5);
+  Serial.print("tempo: ");
+  Serial.println(tempo);
+
+  for (int i = 0; i < tempo; ++i) { // para cada min
+    Serial.print("i: ");
+    Serial.println(i);
+    for (int j = 0; j < 61; ++j) { // para cada seg.
+      Serial.print("j: ");
+      Serial.println(j);
+      if (m_soundGen.playing()) m_soundGen.clear();
+      m_soundGen.playSound(SineWaveformGenerator(), 163, 30);  //Mi
+      //delay(999);
+      delay(1000);
+    }
+  }
+  // end
+  //m_soundGenerator         m_soundGen;
+  //m_soundGen.clear();
+  //delay(100);
+  if (m_soundGen.playing()) m_soundGen.clear();
+  m_soundGen.playSound(SineWaveformGenerator(), 233, 10000);  // end
+  delay(1000);
+
+  
+} // End app TimerApp
+    
 
 
 
@@ -1787,6 +1909,13 @@ void setup()
 
   //heap_caps_get_free_size();
 
+  // audio signal ready
+  //m_soundGenerator         m_soundGen;
+  
+  //m_soundGen.playSound(SineWaveformGenerator(), 158, 300);  //Re#
+  //m_soundGen.clear();
+  //m_soundGen.playSound(SineWaveformGenerator(), 163, 300);  //Mi
+  
   // Monitor or Audio?
   fabgl::StringList list;
   list.append("Using Audio");
@@ -1797,6 +1926,7 @@ void setup()
   if (s == 0) {
     audioMode = true;
     Serial.println("audioMode ativado");
+    //m_soundGenerator         m_soundGen;
   }
   else if (s == 1) {
     audioMode = false;
@@ -1837,6 +1967,9 @@ void loop()
     int s = ibox.menu("Applications", "choose the app", &list);
     if (s == 0) {
       //if (hasSD == false) ibox.message("Error!", "microSD-CARD not found!", nullptr, nullptr); 
+      //m_soundGenerator     m_soundGen2;
+      //m_soundGen2.clear();
+      //m_soundGen.clear();
       PCEmulator();
     }
     if (s == 1) {
@@ -1882,7 +2015,11 @@ void loop()
   }
   
   else if (audioMode == true) { // Audio mode on
-    
+    //m_soundGenerator         m_soundGen;
+    //m_soundGen.clear();
+    delay(100);
+    m_soundGen.playSound(SineWaveformGenerator(), 233, 200);  // Y OK!
+    m_soundGen.playSound(SineWaveformGenerator(), 411, 200);  // es
     // take a keypress
     Serial.println("take a keypress");
     int scode = PS2Controller::keyboard()->getNextScancode();
@@ -1894,112 +2031,16 @@ void loop()
     else if (scode == 30) { // 2 Chat server
       ChatterBox();
     }
-    else if (scode == 38) { // 3 MP3 Player
-      //if (hasSD == true) { // Tem cartão SD
-        AudioPlayer();
-      //}
-      //else {
-      //  Serial.println("SD Mount Failed");
-      //}
+    else if (scode == 38) { // 3 Music Maker()
+      MusicMaker();
     }
-
-     /* audio.connecttoFS(SD, "/press.mp3");
-      audio.connecttoFS(SD, "/one.mp3");
-      audio.connecttoFS(SD, "/for.mp3");
-      audio.connecttoFS(SD, "/internet.mp3");
-      audio.connecttoFS(SD, "/radio.mp3"); */
-    //}
-    /* File file = root.openNextFile();
-  while(file){
-    if(file.isDirectory()){
-      Serial.print("  DIR : ");
-      Serial.println(file.name());
-      String dir = file.name();
-      if (dir == "/VGA32Audio") {
-        Serial.println("/VGA32Audio exists.");
-
-      audio.connecttoFS(SD, "/welcome.mp3");
-      
-      audio.connecttoFS(SD, "/press.mp3");
-      audio.connecttoFS(SD, "/one.mp3");
-      audio.connecttoFS(SD, "/for.mp3");
-      audio.connecttoFS(SD, "/internet.mp3");
-      audio.connecttoFS(SD, "/radio.mp3");
-      break;
-      /*  File file2 = file.openNextFile();
-        while(file2){
-          String filename = file2.name();
-          if (filename.endsWith(".mp3")) {
-            Serial.print("tocar:");
-            Serial.print(filename);
-            audio.connecttoFS(SD,file2.name());
-          }
-          file2 = file.openNextFile();
-        } 
-      }
-    }
-  file = root.openNextFile();
-  } */
-      
-      
-     /* audio.connecttoFS(SD, "/audio.mp3");
-      audio.connecttoFS(SD, "/welcome.mp3");
-      
-      
-
-      audio.connecttoFS(SD, "/VGA32Audio/press.mp3");
-      audio.connecttoFS(SD, "/VGA32Audio/two.mp3");
-      audio.connecttoFS(SD, "/VGA32Audio/for.mp3");
-      audio.connecttoFS(SD, "/VGA32Audio/chat.mp3");
-      audio.connecttoFS(SD, "/VGA32Audio/server.mp3");
-
-      audio.connecttoFS(SD, "/VGA32Audio/press.mp3");
-      audio.connecttoFS(SD, "/VGA32Audio/three.mp3");
-      audio.connecttoFS(SD, "/VGA32Audio/for.mp3");
-      audio.connecttoFS(SD, "/VGA32Audio/mp3.mp3");
-      audio.connecttoFS(SD, "/VGA32Audio/player.mp3"); */
-      
+    else if (scode == 37) { // 4 timer
+      TimerApp();
     }
     
-    /* // take a keypress
-    int scode = PS2Controller::keyboard()->getNextScancode();
-    Serial.println(scode);
-    if (scode == 22) { // 1
-      // WebRadios
-      WebRadios();
-    }
-    else if (scode == 30) { // 2
-      //ChatterBox bate papo horizontal
-      ChatterBox();
-    } */
+  }
+} // end of loop
 
-    /* else if (scode == 38) { // 3 MP3 Player
-
-    }
-    else if (scode == 37) { // 4
-
-    }
-    else if (scode == 46) { // 5
-
-    }
-    else if (scode == 54) { // 6
-
-    }
-    else if (scode == 61) { // 7
-
-    }
-    else if (scode == 62) { // 8
-      //
-
-    }
-    else if (scode == 70) { // 9
-
-    }
-    else if (scode == 69) { // 0
-
-    } */
-  delay(500);
-}
 
 //O sketch usa 1776202 bytes (56%) de espaço de armazenamento para programas. O máximo são 3145728 bytes.
 //Variáveis globais usam 57464 bytes (17%) de memória dinâmica, deixando 270216 bytes para variáveis locais. O máximo são 327680 bytes.
