@@ -7,7 +7,7 @@ Apps:
 - PCEmulator (IBM PC/XT emulator with CGA and Hercules graphics);
 - ChatterBox (Horizontal chat server);
 - File Browser;
-- Jpg View (see images from internal memory);
+- Jpg View (see images from SD card);
 - Web Radios (Online Radios from many countrys);
 - Audio Player (play .mp3, .wav, etc. from SD);
 - Wi-fi Safe (test security of wifi);
