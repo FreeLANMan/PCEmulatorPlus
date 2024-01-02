@@ -17,6 +17,7 @@ Apps:
 2) Chat Server
 3) Audio Maker
 4) Timer
+5) Audio Player (play .mp3, .wav, etc. from SD);
 
 See the wiki for limitations and how to use this system.
 
