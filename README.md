@@ -2,12 +2,15 @@
 The PCEmulator by Fabrizio Di Vittorio plus applications for a more complete system. For the TTGO VGA32 1.4 board and compatibles.
 
 - What is this for?
+  
 This code allows you to use a microcontroller-based board (Esp32) as if it were a computer. This is accomplished by combining a 16-bit PC emulator (8086-CGA/Hercules) with more modern applications (MP3 player, JPG image viewer, microSD card file manager, etc.).
 
 - What are the advantages?
+  
 This allows you to have a low-power, cheap, offgrid, and highly modular computer. Suitable for extreme contexts (lack of electricity, market crisis, etc.)
 
 - What are the disadvantages?
+  
 The computer built using this code has a much lower processing capacity than what is normally seen. You won't be able to watch videos (properly), surf the Internet or play photorealistic action games.
 
 Apps:
