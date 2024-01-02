@@ -1,5 +1,7 @@
-/*
-  Created by Fabrizio Di Vittorio (fdivitto2013@gmail.com) - <http://www.fabgl.com>
+ /*
+    PC Emulator Plus Created by Adrian Rupp, 2022-2024.
+
+  PCEmulator Created by Fabrizio Di Vittorio (fdivitto2013@gmail.com) - <http://www.fabgl.com>
   Copyright (c) 2019-2022 Fabrizio Di Vittorio.
   All rights reserved.
 
@@ -71,15 +73,15 @@ extern "C" {
 
 FileBrowser fb("/");
 
-//m_soundGenerator     m_soundGen;
-SoundGenerator           m_soundGen;
+SoundGenerator     m_soundGen;
+//SoundGenerator           m_soundGen(16000, GPIO_NUM_25, SoundGenMethod::SigmaDelta);
+//SoundGenerator           m_soundGen(16000, GPIO_NUM_25, SoundGenMethod::DAC);
 
 //#define SD_MOUNT_PATH "/SD"
 
 #define SPIFFS_MOUNT_PATH  "/flash"
 #define FORMAT_ON_FAIL     true
 
-#define WIFI_DELAY        500 // Delay paramter for connection.
 #define MAX_CONNECT_TIME  10000 // Wait this much until device gets IP. 
 
 using std::unique_ptr;
@@ -99,7 +101,8 @@ static bool downloadOK    = false;
 
 bool hasSD = true; // tem microSD?
 bool audioMode = false; // output from Monitor activided
-char path[30] = "/";
+//char path[30] = "/";
+String path = "/";
 
 #include <SPI.h>
 
@@ -112,9 +115,7 @@ char path[30] = "/";
 
 // for the SD use
 #include "SD.h"
-
-
-
+File root;
 
 // For App chatterbox
 #include <DNSServer.h>
@@ -122,130 +123,51 @@ char path[30] = "/";
 #include <SPIFFS.h>
 #include <FS.h>
 #include "HTMLPAGE.h"
-
 #define FORMAT_SPIFFS_IF_FAILED true
 #define RECORD_SEP "\x1E"
-
 const byte DNS_PORT = 53;
 IPAddress apIP(192, 168, 1, 1);
 DNSServer dnsServer;
 WebServer server(80);
-
 const char* filename2 = "/posts.txt";
-
 
 // for the app JPGView():
 #include <TJpg_Decoder.h>
 //#include <FS.h>
 //#include "SPIFFS.h" // ESP32 only
-fabgl::VGA16Controller VGAController;
-//fabgl::VGAController VGAController; // dont show the complete image .jpg
+//fabgl::VGA16Controller VGAController;
+//fabgl::VGA2Controller VGAController;
+fabgl::VGAController VGAController;
 fabgl::Canvas cv(&VGAController);
-
 
 // For App Web Radios
 #include <Arduino.h>
 #include "Audio.h"
 //#include <Preferences.h> 
 //#include <WiFi.h>
-
+long randNumber; // any RND number
 
   uint8_t max_volume   = 21;
   uint8_t cur_volume   = 10;  
-  
 
 
-// For Audio Player https://how2electronics.com/esp32-music-audio-mp3-player/
-//int file_index = 1000;
-//String file_list[20];
-//int file_num = 0;
-//String filename = " ";
-
-/* void open_new_song(Audio audio, String filename)
-{
-  //Audio audio(true, 1, 0);
-  //music_info.name = filename.substring(1, filename.indexOf("."));
-  File file = SD.open(filename);
-  //file.name() = filename;
-  audio.connecttoFS(SD, file.name());
-  //music_info.runtime = audio.getAudioCurrentTime();
-  //music_info.length = audio.getAudioFileDuration();
-  //music_info.volume = audio.getVolume();
-  //music_info.status = 1;
-  Serial.println("**********start a new sound************");
-
-  /* while(1) {
-  //audio.loop();
-  if (audio.isRunning()) {
-    Serial.println("cheguei aqui");
-    audio.loop();
-  }
-  else
-  {
-    Serial.println("cheguei aqui2");
-    break;
-    //delay(1000);
-    /*if (audio.isRunning()) {
-     audio.connecttohost(urls[UrlSelector].c_str());
-    }*/
-  //}
-  
-  //audio.loop();
-
-  /*if (PS2Controller::keyboard()->scancodeAvailable()) {
-    int scode = PS2Controller::keyboard()->getNextScancode();
-  if (scode == 22) { // 1 WebRadios
-    WebRadios();
-  }
-  else if (scode == 30) { // 2 //ChatterBox bate papo horizontal
-    ChatterBox();
-  }
-  //else if (scode == 38) { // 3 Mp3 Player
-
-  //} 
-  } 
-
-    
-}*/
-
-/* void AudioMenu() {
-  Serial.println("audioMenu iniciado");
-  ibox.end();       // No more display needed
-  FileBrowser::unmountSDCard(); // lets mount another path
-  Audio audio(true, 1, 0);
-  //Audio audio(true, 1, 0);
-  //audio.setBufsize(15000, 0);
-  audio.setVolume(12);
-  pinMode(13, OUTPUT);      
-  digitalWrite(13, HIGH);
-  SPI.begin(14,2,12);
-  SPI.setFrequency(1000000);
-  SD.begin(13);
-  //File root = SD.open("/"); // OK
-  //if(!root){
-  //  Serial.println("Failed to open directory");
-  //  return;
-  //}
-  //audio.setVolume(12);
-  //audio.connecttoFS(SD, "/audio.mp3");
-  //if (!FileBrowser::mountSDCard(false, "/VGA32Audio/", 8)) Serial.println("Não montou");
-  //if (!FileBrowser::mountSDCard(false, "/VGA32Audio", 8)) Serial.println("Não montou");
-  //else {
-  //audio.connecttoFS(SD, "/VGA32Audio/welcome.mp3");
-  open_new_song(audio, "/VGA32Audio/welcome.mp3");
-  
-  open_new_song(audio, "/VGA32Audio/press.mp3");
-  //open_new_song("/VGA32Audio/one.mp3");
-  //open_new_song("/VGA32Audio/for.mp3");
-  //open_new_song("/VGA32Audio/internet.mp3");
-  //open_new_song("/VGA32Audio/radio.mp3");
-
-} */
 
 void audio_eof_mp3(const char *info) { //end of file
-    Serial.print("eof_mp3     ");
-    Serial.println(info);
-    esp_restart();
+//    Serial.print("eof_mp3     ");
+//    Serial.println(info);
+    //esp_restart();
+  playNextFile(); // play next file in directory if playing a multi-track episode
+      //audio.stopSong();
+    
+    //File file = root.openNextFile();
+    //Serial.println("oi");
+    //String temp = file.name();
+    //String tempr = root.name();
+    //Serial.println("root");
+    //Serial.println(tempr);
+    //Serial.println("temp");
+    //Serial.println(temp);
+    //PlayAudio(temp.c_str());
     //if (audio.isRunning())    Serial.println("audio.isRunning");
     //playNextFile(); // play next file in directory if playing a multi-track episode
     
@@ -281,9 +203,11 @@ void PlayAudio(const char* filename){
           Serial.println("\nPSRAM does not work");
   } */
 
-
   
-  Audio audio(true, 1, 0);
+  //Audio audio(true, 1, 0);
+  //Audio audio;
+  Audio audio(true, I2S_DAC_CHANNEL_BOTH_EN); // Is it also possible without an external DAC?If the 8-bit sound is enough, you can do that.
+  
   //Serial.println("Increasing buffer size. ");
   //audio.setBufsize(15000, 0);
   //audio.setBufsize(1000, 0); A stack overflow in task IDLE0 has been detected.
@@ -297,9 +221,9 @@ void PlayAudio(const char* filename){
  
     //File root = fs.open(path);
 
-  audio.forceMono(true); // necessary to have enough memory to play
+  //audio.forceMono(true); // necessary to have enough memory to play
   
-  audio.setVolume(6); // 0...21
+  audio.setVolume(9); // 0...21
   //open_new_song(audio, file_list[file_index]);
   //open_new_song(audio, filename);
   //print_song_time();
@@ -314,21 +238,15 @@ void PlayAudio(const char* filename){
   audio.connecttoFS(SD, filename);
 
   while (1) {
+    //heap_caps_check_integrity_all()
     audio.loop();
-
-   /* if (audio.isRunning()){
-      Serial.println("audio.isRunning");
+    if (audio.isRunning()){
+      //Serial.println("audio.isRunning");
       audio.loop();
     }
     else {
       audio.stopSong();
-      //file_index++;
-    /* if (file_index >= file_num)
-    {
-        file_index = 0;
     }
-    if (file_index < 999) open_new_song(audio, file_list[file_index]);
-    }  */
 
     //File root = fs.open(path);
     /* root = fs.open(path);
@@ -398,6 +316,136 @@ void PlayAudio(const char* filename){
 
 
 
+// For Audio Player:
+void playNextFile() {
+  //String path = root.name();
+  //String lastfile = path.substring(path.lastIndexOf('/'));
+  //String path2 = path.substring(0,path.lastIndexOf('/'));
+  Serial.println("path");
+  Serial.println(path);
+  Serial.println("root");
+  Serial.println(root.name());
+  //File root1 = SD.open(path);
+  File file = root.openNextFile();
+  //String filename = file.name();
+  //Serial.println("file");
+  //Serial.println(filename);
+  while (file) {
+    String filename = file.name();
+    if (filename.endsWith(".mp3") or filename.endsWith(".wav") or filename.endsWith(".flac") or filename.endsWith(".wma")) {
+      //Serial.println("achei");
+      randNumber = random(4);
+      if (randNumber < 1) {
+        if (path == filename) {
+          Serial.println("igual");
+          file = root.openNextFile();
+          filename = file.name();
+          //root = file;
+          PlayAudio(filename.c_str());
+          //file.close(); 
+        }
+        else {
+          //Serial.println("diferente");
+          //Serial.println(path);
+          //root = file;
+          PlayAudio(filename.c_str());
+          //file.close();
+        }
+      }
+    }
+    file.close(); 
+    file = root.openNextFile();
+  }
+
+}
+
+
+
+bool ConnectOpen(){
+  // Scan, Sort, and Connect to WiFi   thanks to Leatherneck Garage
+  // Link: https://www.instructables.com/id/Connect-an-ESP8266-to-Any-Open-WiFi-Network-Automa/
+  Serial.println("Scanning for open networks...");
+  if(WiFi.status() != WL_CONNECTED) {
+    
+    /* Clear previous modes. */
+    WiFi.softAPdisconnect();
+    WiFi.disconnect();
+    WiFi.mode(WIFI_STA);
+    //WiFi.mode(WIFI_AP_STA); // tentando ativar modo AP + cliente
+    delay(500);
+    //WiFi.softAP("ESP8266 2342"); // tentando criar o AP
+    /* Scan for networks to find open guy. */
+
+    char ssid[32] = ""; /* SSID that to be stored to connect. */
+
+    memset(ssid, 0, 32);
+    int n = WiFi.scanNetworks();
+    Serial.println("Scan complete!");
+    if (n == 0) {
+      Serial.println("No networks available.");
+    } 
+    else {
+      Serial.print(n);
+      Serial.println(" networks discovered.");
+      int indices[n];
+      for (int i = 0; i < n; i++) {
+        indices[i] = i;
+      }
+      for (int i = 0; i < n; i++) {
+        for (int j = i + 1; j < n; j++) {
+          if (WiFi.RSSI(indices[j]) > WiFi.RSSI(indices[i])) {
+            std::swap(indices[i], indices[j]);
+          }
+        }
+      }
+      for (int i = 0; i < n; ++i) {
+        Serial.println("The strongest open network is:");
+        Serial.print(WiFi.SSID(indices[i]));
+        Serial.print(" ");
+        Serial.print(WiFi.RSSI(indices[i]));
+        Serial.print(" ");
+        Serial.print(WiFi.encryptionType(indices[i]));
+        Serial.println();
+        //if(WiFi.encryptionType(indices[i]) == ENC_TYPE_NONE) { // 'ENC_TYPE_NONE' another lib
+        if(WiFi.encryptionType(indices[i]) == WIFI_AUTH_OPEN) {  
+          memset(ssid, 0, 32);
+          strncpy(ssid, WiFi.SSID(indices[i]).c_str(), 32);
+          break;
+        }
+      }
+  }
+
+    delay(500);
+    /* Global ssid param need to be filled to connect. */
+    if(strlen(ssid) > 0) {
+      Serial.print("Connecting to ");
+      Serial.println(ssid);
+      /* No pass for WiFi. We are looking for non-encrypteds. */
+      WiFi.begin(ssid);
+      unsigned short try_cnt = 0;
+      /* Wait until WiFi connection but do not exceed MAX_CONNECT_TIME */
+      while (WiFi.status() != WL_CONNECTED && try_cnt < MAX_CONNECT_TIME / 500) {
+        delay(500);
+        Serial.print(".");
+        try_cnt++;
+      }
+      if(WiFi.status() == WL_CONNECTED) {
+        Serial.println("");
+        Serial.println("Connection Successful!");
+        Serial.println("Your device IP address is ");
+        Serial.println(WiFi.localIP());
+      } else {
+        Serial.println("Connection FAILED");
+      }
+    } 
+    else {
+      Serial.println("No open networks available. :-(");  
+    }
+  }
+}
+
+
+
 // try to connected using saved parameters
 bool tryToConnect()
 {
@@ -421,6 +469,7 @@ bool tryToConnect()
       });
       // show to user the connection state
       if (!connected) {
+        ConnectOpen(); // connect to a strong open network
         WiFi.disconnect();
         ibox.message("", "WiFi Connection failed!");
       }
@@ -433,8 +482,8 @@ bool tryToConnect()
 bool checkWiFi()
 {
   Serial.println("checkWiFi Start");
-  wifiConnected = tryToConnect();
-  if (!wifiConnected) {
+  //wifiConnected = tryToConnect();
+  //if (!wifiConnected) {
 
     // configure WiFi?
     if (ibox.message("WiFi Configuration", "Configure WiFi?", "No", "Yes") == InputResult::Enter) {
@@ -485,9 +534,9 @@ bool checkWiFi()
 
     }
 
-  }
+  //}
 
-  return wifiConnected;
+  //return wifiConnected;
 }
 
 
@@ -717,12 +766,22 @@ void receiveMessage(){
       Serial.println("- failed to open file for writing");
   }
   if(argCount == 1){
-    String line = server.arg(0);
+  String line = server.arg(0);
     line.replace(String(RECORD_SEP),String(""));
     file.print(line);
     file.print(RECORD_SEP);
-    Serial.print("New message: ");
-    Serial.println(line);
+    ibox.progressBox("ChatterBox last message:", nullptr, false, 200, [&](fabgl::ProgressForm * form) {
+      form->update(0, line.c_str()); });
+      /* ibox.setAutoOK(0);
+      if (ibox.textInput("ChatterBox", "message:", message, 99, nullptr, "OK",false) == InputResult::Enter) {
+        File file = SPIFFS.open(filename2, FILE_APPEND);
+        file.print(message);
+        file.print(RECORD_SEP);  
+        file.close();
+        Serial.println("Message from TTGO:");
+        Serial.println(message); */
+  //  Serial.print("New message: ");
+  //  Serial.println(line);
   }
   file.close();
   
@@ -745,7 +804,7 @@ void writePixel(int16_t x, int16_t y, uint16_t rgb565)
 bool vga_output(int16_t x, int16_t y, uint16_t w, uint16_t h, uint16_t* bitmap) {
   // Stop further decoding as image is running off bottom of screen
   if ( y >= cv.getHeight() ) return 0;
-
+  //if ( y >= 300 ) return 0;
   for (int16_t j = 0; j < h; j++, y++) {
     for (int16_t i = 0; i < w; i++) {
       writePixel(x + i, y, bitmap[j * w + i]);
@@ -756,37 +815,100 @@ bool vga_output(int16_t x, int16_t y, uint16_t w, uint16_t h, uint16_t* bitmap) 
   return 1;
 }
 
+
+
 // show image jpg
-// code by https://github.com/fdivitto/FabGL/discussions/160#discussioncomment-1423074
-void ShowJPG(char * filename)
+// code based on https://github.com/fdivitto/FabGL/discussions/160#discussioncomment-1423074
+void ShowJPG(char * directory, char * filename)
 {
 
   //Initialise SPIFFS:
-  if(!SPIFFS.begin()){
-    Serial.println("SPIFFS Mount Failed");
-    return;
-  }  
-    
-  Serial.print("filename: ");
-  Serial.println(filename);
+  //if(!SPIFFS.begin()){
+  //  Serial.println("SPIFFS Mount Failed");
+  //  return;
+  //}  
+  //Serial.print("filename: ");
+  //Serial.println(filename);
+  //Serial.print("directory: ");
+  //Serial.println(directory);
   fabgl::BitmappedDisplayController::queueSize = 1024; // deixou mais rápido, com mais 10 = extremamente lento (e não resolveu d mostrar tudo)
+  //VGAController.queueSize = 2048; // 400x300 = 11740 ms
+  //VGAController.queueSize = 256; // 400x300 = 11890 ms
   //cv.waitCompletion(false);
+
   //cv.endUpdate();
   //cv.reset(); // pane com o de baixo
   //cv.resetPaintOptions(); // pane
+
+  /* bool resol; // true = 400x300 64c
+  fabgl::StringList list;
+  list.append("Mode 400x300 64colors");
+  list.append("Mode 1280x720 64colors");
+  list.select(0, true);
+  int s = ibox.menu("Jpg View", "Choose the mode", &list);
+  ibox.setAutoOK(5);
+  if (s == 0) {
+    resol = true;
+  }
+  else if (s == 1) {
+    resol = false;
+  } */
+
+
   ibox.end();
-  VGAController.begin();
+
+  // VGAController.setResolution(VGA_640x480_60Hz); // miss end of image
+  //if (resol == true) {
+    VGAController.begin();
+    VGAController.setResolution(VGA_400x300_60Hz); // nice esticado
+    //VGAController.setResolution("\"512x384@60Hz\" 32.5 512 525 593 672 384 385 388 403 -HSync -VSync DoubleScan VisibleBegins"); / estica e corta
+  //}
+  
+  /* if (resol == false) {
+    Serial.println("HelloAG");
+    //fabgl::VGA2Controller VGAController;
+    Serial.println("HelloER");
+    VGAController.begin();
+    Serial.println("Hello2");
+    //fabgl::VGA2Controller VGAController;
+    //fabgl::Canvas cv(&VGAController);
+    Serial.println("Hello25");
+    //VGAController.setResolution(SVGA_1280x720_60HzAlt1); //  error x2
+    VGAController.setResolution(VGA_320x200_70Hz); 
+    //VGAController.setResolution(SVGA_1024x768_60Hz); //  error
+    // Modeline corrigido "400x300@60Hz" 20 400 424 488 536 300 302 304 316 -HSync -VSync DoubleScan VisibleBegins
+    // menor modeline "320x200@70Hz" 12.5875 320 332 380 408 200 205 206 224 -HSync -VSync DoubleScan VisibleBegins
+    Serial.println("Hello12");
+    //cv.endUpdate();
+    //cv.reset();
+  } */
+  
+  //VGAController.setResolution(VGA_640x240_60Hz); // miss end of image
   //VGAController.setResolution(VGA_640x480_60Hz, 512, 300);
   //VGAController.setResolution(VGA_512x300_60Hz);
   //VGAController.setResolution(VGA_400x300_60Hz);
-  //VGAController.setResolution(VGA_512x384_60Hz, 512, 300);
-  VGAController.setResolution(VGA_512x384_60Hz); // my monitor resolution is 1024 x 600
-  VGAController.setProcessPrimitivesOnBlank(true);
+  //VGAController.setResolution(VGA_512x384_60Hz, 512, 300); // miss end of image, esticada
+  //VGAController.setResolution(VGA_512x384_60Hz, 480, 270); // miss end of image, esticada
+  //VGAController.setResolution(VGA_512x384_60Hz, 470, 300); // my monitor resolution is 1024 x 600 // miss end of image , pouco esticada
+  //VGAController.setResolution("\"256x150@60.00\" 2.40 256 232 256 256 150 151 154 156 -HSync -Vsync"); // no image, error in modeline?
+  //VGAController.setResolution("\"320x188_60.00\" 3.93 320 304 328 336 188 189 192 195 -HSync -Vsync"); // no image, error in modeline?
+  //VGAController.setResolution("\"400x234_60.00\" 6.53 400 392 424 448 234 235 238 243 -HSync -Vsync"); // no suport in monitor, error in modeline?
+  //VGAController.setResolution("\"512x300@60.00\" 11.05 512 504 552 592 300 301 304 311 -HSync -Vsync"); // no suport in monitor, error in modeline?
+
+  //VGAController.release();
+  //VGAController.begin();
+  //VGAController.setResolution(VGA_400x300_60Hz); // nice
+  
+  //VGAController.setProcessPrimitivesOnBlank(true);
+  //cv.clear();
+  //Serial.println("Hello56");
   cv.setBrushColor(RGB888(0, 0, 0));
+  //Serial.println("Hello78");
   cv.clear();
+  //Serial.println("HelloGJ");
   //Serial.print("ho");
   // The jpeg image can be scaled by a factor of 1, 2, 4, or 8
-  TJpgDec.setJpgScale(1);
+  //TJpgDec.setJpgScale(1);
   //Serial.print("directory: ");
   //Serial.println(directory); //'directory' was not declared in this scope
   // The decoder must be given the exact name of the rendering function above
@@ -806,77 +928,181 @@ void ShowJPG(char * filename)
   //TJpgDec.getSdJpgSize(&w, &h, filename2); // Note name preceded with "/"
 
   //Resize if possible: (down scale...)
-  
-    TJpgDec.getFsJpgSize(&w, &h, String("/")+filename);
-  Serial.print("Width = "); Serial.print(w); Serial.print(", height = "); Serial.println(h);
-  /* if (w < 320 and h < 240)
-    {
-    TJpgDec.setJpgScale(2);
-    }
-  else 
-    TJpgDec.setJpgScale(1); */
-    
-  /* Resize if possible: (640x480)
-  if (w > 5120 or h > 3840) 
-    TJpgDec.setJpgScale(8);
-  else if (w > 2560 or h > 1920)
-    TJpgDec.setJpgScale(4);
-  else if (w > 640 or h > 480)
-    TJpgDec.setJpgScale(2);
-  else 
-    TJpgDec.setJpgScale(1);  */
 
-  //Resize if possible: (512x300) // (for my monitor...)
-  //if (w > 4096 or h > 2400) 
-  if (w > 4301 or h > 2520) // crop 5%
-    TJpgDec.setJpgScale(8);
-  //if (w > 2048 or h > 1200)
-  if (w > 2150 or h > 1260) //crop 5%
-    //TJpgDec.setJpgScale(8);
-    TJpgDec.setJpgScale(4);
-  //else if (w > 2048 or h > 1200)
-  //else if (w > 1024 or h > 600)
-  else if (w > 1075 or h > 630) //crop 5%
-    //TJpgDec.setJpgScale(4);
-    TJpgDec.setJpgScale(2);
-  //else if (w > 1024 or h > 600)
-  //else if (w > 512 or h > 300)
-  //else if (w > 538 or h > 315) //crop 5%
-  //  TJpgDec.setJpgScale(2);
-  else 
-    TJpgDec.setJpgScale(1); 
+  //fabgl::NativePixelFormat(Mono);
+  
+  TJpgDec.getSdJpgSize(&w, &h, String("/")+filename);
+  Serial.print("Width = "); Serial.print(w); Serial.print(", height = "); Serial.println(h);
+
+  int factor = 1;
+
+  //if (resol == true) {
+    //Resize if possible: 
+    //if (w > 1600 or h > 1200) 
+      //TJpgDec.setJpgScale(8);
+    if (w > 800 or h > 600) {
+      TJpgDec.setJpgScale(4);
+      factor = 4;
+    }
+    else if (w > 400 or h > 300) {
+      TJpgDec.setJpgScale(2);
+      factor = 2;
+    }
+    else {
+      TJpgDec.setJpgScale(1); 
+      factor = 1;
+    }
 
   // Draw the image, top left at 0,0
-  //TJpgDec.drawFsJpg(0, 0, filename); //file not found
-  //TJpgDec.drawFsJpg(0, 0, "/panda.jpg"); // Ok
-  //filename = "/" + filename; invalid operands of types 'const char [2]' and 'char*' to binary 'operator+'
-  //filename = "/" += filename; invalid operands of types 'const char [2]' and 'char*' to binary 'operator+'
-  //filename = '/' + filename;  dont work
-  Serial.print("filename: ");
-  Serial.println(filename);
-  TJpgDec.drawFsJpg(0, 0, String("/")+filename); 
-  //TJpgDec.drawSdJpg(0, 0, filename);  //file not found
-  //TJpgDec.drawSdJpg(0, 0, "/moto.jpg"); //file not found
-  //TJpgDec.drawSdJpg(0, 0, "SD/moto.jpg"); //file not found
-  //TJpgDec.drawSdJpg(0, 0, "/SD/moto.jpg"); //file not found
-  //TJpgDec.drawSdJpg(0, 0, "moto.jpg"); //file not found
-  //TJpgDec.drawSdJpg(0, 0, "/panda.jpg".c_str());  // Jpeg file not found request for member 'c_str' in '"/panda.jpg"', which is of non-class type 'const char [11]'
-  //TJpgDec.drawSdJpg(0, 0, "/moto.jpg"); //Jpeg file not found
-  //TJpgDec.drawSdJpg(0, 0, "/moto.jpg"); // Jpeg file not found
+  TJpgDec.drawSdJpg(0, 0, String("/")+filename); 
   
   // How much time did rendering take
   t = millis() - t;
   Serial.print(t); Serial.println(" ms");
 
+  bool modo = true; // true = key next
+
   // take a keypress
   int scode = PS2Controller::keyboard()->getNextScancode();
+  Serial.print(scode);
+  if (scode == 102) {  // get out backspace
+     esp_restart();
+  }
+  else if (scode == 27) { //  s
+     modo = false; // false = slide show mode
+  }
+  else if (scode == 45) { //  r reduce image
+    if (factor == 1) {
+      TJpgDec.setJpgScale(2); 
+      TJpgDec.drawSdJpg(0, 0, String("/")+filename); 
+    }
+    else if (factor == 2) {
+      TJpgDec.setJpgScale(4); 
+      TJpgDec.drawSdJpg(0, 0, String("/")+filename); 
+    }
+    else if (factor == 4) {
+      TJpgDec.setJpgScale(8); 
+      TJpgDec.drawSdJpg(0, 0, String("/")+filename); 
+    }
+  }
+  else if (scode == 36) { //  e enlarge image
+    if (factor == 4) {
+      TJpgDec.setJpgScale(2); 
+      TJpgDec.drawSdJpg(0, 0, String("/")+filename); 
+    }
+    else if (factor == 2) {
+      TJpgDec.setJpgScale(1); 
+      TJpgDec.drawSdJpg(0, 0, String("/")+filename); 
+    }
+    else if (factor == 1) {
+      VGAController.setResolution(VGA_320x200_70Hz);
+      TJpgDec.drawSdJpg(0, 0, String("/")+filename); 
+    }
+    scode = PS2Controller::keyboard()->getNextScancode();
+    VGAController.setResolution(VGA_400x300_60Hz);
+  }
+  String directory2;
+  directory2 += directory;
+  directory2.remove(0, 3); // 0,3 "/sd" virou nada  0, 1 sd
+  //strcat(directory2,"/");
+  //strcat(directory2,directory[directory.length()+1];
+  Serial.print("directory2: ");
+  Serial.println(directory2);
+  //directory2 = "/";
+  Serial.print("directory2: ");
+  Serial.println(directory2);
+  File root = SD.open(directory2);
+  Serial.print(root);
+  while(1) {
 
-  // now user can choice another app:
+      //Serial.print("cgei");
+      File file = root.openNextFile();
+      Serial.println(file);
+      while (file) {
+        if (file.isDirectory()) { }
+        else {
+          String temp = file.name();
+          Serial.println(temp);
+          if (temp.endsWith(".jpg") or temp.endsWith(".jpeg") or temp.endsWith(".jpe") or temp.endsWith(".jif") or temp.endsWith(".jfif") or temp.endsWith(".jfi")) {
+            //if (resol == true) {
+              //Resize if possible: (down scale...)
+              TJpgDec.getSdJpgSize(&w, &h, String("/")+temp);
+              Serial.print("Width = "); Serial.print(w); Serial.print(", height = "); Serial.println(h);
+              //Resize if possible: 
+              //if (w > 1600 or h > 1200) 
+              //  TJpgDec.setJpgScale(8);
+              if (w > 800 or h > 600) 
+                TJpgDec.setJpgScale(4);
+              else if (w > 400 or h > 300) 
+                TJpgDec.setJpgScale(2);
+              else 
+                TJpgDec.setJpgScale(1); 
+            //} 
+            //cv.clear();
+            TJpgDec.drawSdJpg(0, 0, String("/")+temp);
+            if (modo == false) 
+              delay(10000); // 10s
+              //delay(5000); // 5s
+            else if (modo == true) {
+              int scode = PS2Controller::keyboard()->getNextScancode();
+              Serial.print(scode);
+              if (scode == 102) {  // get out backspace
+                esp_restart();
+              }
+              else if (scode == 27) { //  s 240?
+              modo = false; // false = slide show mode
+              }
+              else if (scode == 45) { //  r reduce
+                if (factor == 1) {
+                  TJpgDec.setJpgScale(2); 
+                  TJpgDec.drawSdJpg(0, 0, String("/")+temp);
+                }
+                else if (factor == 2) {
+                  TJpgDec.setJpgScale(4); 
+                  TJpgDec.drawSdJpg(0, 0, String("/")+temp);
+                }
+                else if (factor == 4) {
+                  TJpgDec.setJpgScale(8); 
+                  TJpgDec.drawSdJpg(0, 0, String("/")+temp);
+                }
+              scode = PS2Controller::keyboard()->getNextScancode();
+              }
+              else if (scode == 36) { //  e enlarge image
+                if (factor == 4) {
+                  TJpgDec.setJpgScale(2); 
+                  TJpgDec.drawSdJpg(0, 0, String("/")+temp);
+                }
+                else if (factor == 2) {
+                  TJpgDec.setJpgScale(1); 
+                  TJpgDec.drawSdJpg(0, 0, String("/")+temp);
+                }
+                else if (factor == 1) {
+                  VGAController.setResolution(VGA_320x200_70Hz);
+                  TJpgDec.drawSdJpg(0, 0, String("/")+temp);
+                }
+                scode = PS2Controller::keyboard()->getNextScancode();
+                VGAController.setResolution(VGA_400x300_60Hz);
+              }
+            }
+          }
+        }
+      file = root.openNextFile();
+      }
+      file.close();
+
+  Serial.print("Hi");
+  break;
+  } 
+  Serial.print("Hi2");
+  // restart the app:
+  //FileBrowser::unmountSDCard();   //Unmound SD
+  //SD.end();
+  //Serial.println("Card unMount!"); 
+  //ibox.begin(VGA_640x480_60Hz, 500, 400, 4);
+  //ibox.setBackgroundColor(RGB888(0, 0, 0));
+  //JPGView(); 
   esp_restart();
-   /*while (1){
-    t = millis();
-  } */
-}
+} // end of ShowJPG
 
 
 
@@ -1104,6 +1330,7 @@ void ChatterBox()
       Serial.println("SPIFFS Mount Failed");
       return;
     }
+  SPIFFS.remove(filename2);  
   // initialize file (not totally sure this is necessary but YOLO)
   File file = SPIFFS.open(filename2, FILE_READ);
   if(!file){
@@ -1159,41 +1386,132 @@ void ChatterBox()
 
 
   // ChatterBox Loop:
-  
+    char message[100]; // for message from the TTGO VGA32
   while (1)
   {
   //Serial.println("Chegou aqui");
   dnsServer.processNextRequest();
   server.handleClient();
   }
-}
+} // End of app chatter Box
 
 
 
 
 // App JPG View
-void JPGView()
-{
-  FileBrowser::mountSPIFFS(FORMAT_ON_FAIL, SPIFFS_MOUNT_PATH);
+void JPGView() {
+  Serial.println("App JPG View started.");
+
+  /* Clear previous modes. */
+  WiFi.softAPdisconnect();
+  WiFi.disconnect();
+  // try to turn off the wifi
+  WiFi.mode(WIFI_OFF);
+
+  //dnsServer.end();
+  //server.end();
+  SPIFFS.end();
+
+  if (!FileBrowser::mountSDCard(false, SD_MOUNT_PATH, 8)){ // @TODO: reduce to 4?
+    hasSD = false;
+    Serial.println("SD not Found. ");
+  }
+  else {
+    hasSD = true;
+    Serial.println("SD Found. ");
+  }
 
   // File Select
-  if (SPIFFS_MOUNT_PATH) {
-    char filename[16] = "/";
-    //String filename;
-    char directory[32];
-    strcpy(directory, SPIFFS_MOUNT_PATH);
-    if (ibox.fileSelector("File Select", "Filename: ", directory, sizeof(directory) - 1, filename, sizeof(filename) - 1) == InputResult::Enter) {
-      Serial.print("directory: ");
-      Serial.println(directory);
-      Serial.print("filename: ");
-      Serial.println(filename);
+  //if (SPIFFS_MOUNT_PATH) {
 
-      // the lib use another way so:
-      SPIFFS.end();
-      
-      ShowJPG(filename);
-    }
+  // origin
+  //ibox.setupButton(0, "From Network");
+  //ibox.setupButton(1, "From SD");
+  //auto r = ibox.select("JPG View", "Please select a location", nullptr, nullptr, "Run");
+  //fabgl::StringList list;
+  //list.append("From Network"); //0
+  //list.append("From SD");
+  //int s = ibox.menu("JPG View", "Please select a location", &list);
+  //auto r = ibox.message("JPG View", "Please select a location", nullptr, "From Network", "From SD");
+  
+  /* if (s == 0) {
+      //case InputResult::Cancel:{ 
+        // network
+        String lista[20];
+        int i = 0;
+        File f = SD.open("/webimages.txt", "r"); // r = abrir para leitura
+        while(f.available()) {
+          //String line = f.readStringUntil('\n');
+          //fabgl::StringList list;
+          //list.append(f.readStringUntil('\n'));
+          //list.appendFmt((f.readStringUntil('\n')).c_str());
+          //list.appendFmt(line.c_str());
+          if (i < 20) lista[i] = f.readStringUntil('\n');
+          i = i + 1;
+        }
+        f.close();
+        fabgl::StringList list;
+        String address;
+        for (int i = 0; i < 20; ++i)
+          list.appendFmt(lista[i].c_str());
+        int s = ibox.menu("JPG View", "Choose the site:", &list);
+        //String address = lista[s].remove(lista[s].readStringUntil(';');;
+        //address.remove(lista[s].readStringUntil(';');
+        address.remove(0, address.lastIndexOf(';'));
+        Serial.println(address);
+        download(address.c_str());
+        //break;
+     // } 
+      //case InputResult::Enter:{ 
+        //segue
+      //} */
+
+  char filename[40] = "/";
+  //String filename;
+  char directory[40];
+  //strcpy(directory, SPIFFS_MOUNT_PATH);
+  strcpy(directory, "/");
+  if (ibox.fileSelector("JPG View", "Filename: ", directory, sizeof(directory) - 1, filename, sizeof(filename) - 1) == InputResult::Enter) {}
+  Serial.print("directory: ");
+  Serial.println(directory);
+  Serial.print("filename: ");
+  Serial.println(filename);
+  char filen[strlen(directory)+strlen(filename)+1] = "";
+  strcat(filen,directory);
+  Serial.print("filen: ");
+  Serial.println(filen);
+  strcat(filen,"/");
+  strcat(filen,filename);
+  //Serial.print("filen: ");
+  //Serial.println(filen);
+  String filen2;
+  filen2 += filen;
+  //Serial.print("filen2: ");
+  //Serial.println(filen2);
+  filen2.remove(0, 3);  
+  Serial.print("filen2: ");
+  Serial.println(filen2);
+  char filen3[filen2.length() + 1];
+  //filen3 = filen2.c_str(); //incompatible types in assignment of 'const char*' to 'char [50]'
+  strcpy(filen3,filen2.c_str()); 
+
+  //Unmound SD
+  FileBrowser::unmountSDCard();
+  Serial.println("Card unMount!"); 
+    
+  //SD(SPI)
+  pinMode(SD_CS, OUTPUT);
+  digitalWrite(SD_CS, HIGH);
+  SPI.begin(SPI_SCK, SPI_MISO, SPI_MOSI);
+  SPI.setFrequency(1000000);
+  if (!SD.begin(SD_CS, SPI)) {
+      Serial.println("Card Mount Failed");
+      //break;
   }
+  else Serial.println("Card Mount Ok!");  
+
+  ShowJPG(directory,filen3);
+  
 }
 
 
@@ -1260,8 +1578,8 @@ void WifiSafe() { // app Wi-Fi Seguro
         WiFi.begin(RedeAlvo.c_str(), RedeAlvo.c_str());
       });
       unsigned short try_cnt = 0;
-      while (WiFi.status() != WL_CONNECTED && try_cnt < MAX_CONNECT_TIME / WIFI_DELAY) {
-        delay(500); //WIFI_DELAY
+      while (WiFi.status() != WL_CONNECTED && try_cnt < MAX_CONNECT_TIME / 500) {
+        delay(500); //500
         Serial.print(".");
         try_cnt++;
       }
@@ -1288,8 +1606,8 @@ void WifiSafe() { // app Wi-Fi Seguro
         });
         //ibox.message(RedeAlvo.c_str(),TudoMinusculas.c_str(),nullptr,nullptr);
         try_cnt = 0;
-        while (WiFi.status() != WL_CONNECTED && try_cnt < MAX_CONNECT_TIME / WIFI_DELAY) {
-          delay(WIFI_DELAY);
+        while (WiFi.status() != WL_CONNECTED && try_cnt < MAX_CONNECT_TIME / 500) {
+          delay(500);
           Serial.print(".");
           try_cnt++;
         }
@@ -1325,8 +1643,8 @@ void WifiSafe() { // app Wi-Fi Seguro
         
         //ibox.message(RedeAlvo.c_str(),SemEspacos.c_str(),nullptr,nullptr);
         try_cnt = 0;
-        while (WiFi.status() != WL_CONNECTED && try_cnt < MAX_CONNECT_TIME / WIFI_DELAY) {
-          delay(WIFI_DELAY);
+        while (WiFi.status() != WL_CONNECTED && try_cnt < MAX_CONNECT_TIME / 500) {
+          delay(500);
           Serial.print(".");
           try_cnt++;
         }
@@ -1378,8 +1696,8 @@ void WifiSafe() { // app Wi-Fi Seguro
         try_cnt = 0;
         
         /* Wait until WiFi connection but do not exceed MAX_CONNECT_TIME */
-        while (WiFi.status() != WL_CONNECTED && try_cnt < MAX_CONNECT_TIME / WIFI_DELAY) {
-          delay(WIFI_DELAY);
+        while (WiFi.status() != WL_CONNECTED && try_cnt < MAX_CONNECT_TIME / 500) {
+          delay(500);
           Serial.print(".");
           try_cnt++;
         }
@@ -1465,7 +1783,7 @@ void WebRadios()
         else if (language == 1) 
           audio.connecttohost("https://aovivord92fm.rbsdirect.com.br/memorystreams/HLS/92fm/92fm-32000.m3u8"); //92 FM pop news talk brazilian  Server:Brazil OK!
         else if (language == 2) 
-          audio.connecttohost("http://192.168.43.1:8080/audio.mp3"); // open a file call 'audio.mp3 in a Android phone with router wifi and webserver app started.
+          audio.connecttohost("http://192.168.43.1:8080/audio.mp3"); // open a file call 'audio.mp3 in a Android phone with router wifi and webserver app started. // not supported?
       }
       else if (scode == 38) { // 3
         if (language == 0) 
@@ -1527,7 +1845,8 @@ void WebRadios()
         language = 0;
         audio.connecttohost("https://prod-52-91-107-216.wostreaming.net/goodkarma-wknramaac-ibc2"); // ESPN 850 AM news talk sports USA
       }
-      else if (scode == 102) {  // get out backspace
+      //else if (scode == 102) {  // get out backspace
+      else if (scode == 118) {  // get out backspace
         esp_restart();
       }
     Serial.println(scode);
@@ -1540,27 +1859,56 @@ void WebRadios()
 
 
 
+
+
+
+// App Audio Player
 void AudioPlayer(){
   Serial.println("Audio Player started");
 
-  if (!FileBrowser::mountSDCard(false, SD_MOUNT_PATH, 8)){ // @TODO: reduce to 4?
+  if (m_soundGen.playing()) m_soundGen.clear();
+  delay(500);
+  //m_soundGenerator         m_soundGen;
+  m_soundGen.playSound(SineWaveformGenerator(), 163, 300);  //Mi
+  m_soundGen.clear();
+  m_soundGen.playSound(SineWaveformGenerator(), 158, 300);  //Re#
+  delay(500);
+  m_soundGen.clear();
+
+  /*if (!FileBrowser::mountSDCard(false, SD_MOUNT_PATH, 8)){ // @TODO: reduce to 4?
     hasSD = false;
     Serial.println("SD not Found. ");
   }
   else {
     hasSD = true;
     Serial.println("SD Found. ");
+  } */
+
+  // insert words
+  //long tempo = 1; // 1 = 1min
+  char words[40] = "";
+  // user choose
+  ibox.setAutoOK(0);
+  auto r = ibox.textInput("MP3 Player", "Keywords:", words, 40, nullptr, "Search",false);
+  switch (r) {
+    //case InputResult::ButtonExt1:
+    //Serial.println(URL);
+    //getDisk(URL);
+    //break;
+    case InputResult::Enter:
+    Serial.print("words: ");
+    Serial.println(words);
+    break;
   }
 
-  char filename[50] = "/";
+  /* char filename[70] = "/";
   char directory[50];
   strcpy(directory, "/");
-  if (ibox.fileSelector("Audio Player", "Filename: ", directory, sizeof(directory) - 1, filename, sizeof(filename) - 1) == InputResult::Enter) {
+  //if (ibox.fileSelector("Audio Player", "Filename: ", directory, sizeof(directory) - 1, filename, sizeof(filename) - 1) == InputResult::Enter) {
     //Serial.print("directory: ");
     //Serial.println(directory);
     //Serial.print("filename: ");
     //Serial.println(filename);
-  }
     char filen[strlen(directory)+strlen(filename)+1] = "";
     strcat(filen,directory);
     Serial.print("filen: ");
@@ -1575,7 +1923,7 @@ void AudioPlayer(){
     //Serial.println(filen2);
     filen2.remove(0, 3);  
     Serial.print("filen2: ");
-    Serial.println(filen2);
+    Serial.println(filen2); */
     
   //Unmound SD
   FileBrowser::unmountSDCard();
@@ -1585,6 +1933,8 @@ void AudioPlayer(){
   ibox.end();
 
   SPIFFS.end();
+
+  //Serial.end(); // more memory?
 
   /* Clear previous modes. */
   WiFi.softAPdisconnect();
@@ -1603,12 +1953,131 @@ void AudioPlayer(){
   }
   else Serial.println("Card Mount Ok!");  
 
-  char filen3[filen2.length() + 1];
+  // chama função que procura m
+
+
+
+
+  //Search for the file
+  File root1 = SD.open("/");
+  File file1 = root1.openNextFile();
+  Serial.println(file1);
+  while (file1) {
+    String temp1 = file1.name();
+    Serial.println(temp1);
+    if (file1.isDirectory()) { 
+      //Serial.println("Pasta:");
+      //Serial.println(file);
+      File root2 = SD.open(temp1);
+      File file2 = root2.openNextFile();
+      root = file1;
+      path = file1.name();
+      while (file2) {
+        String temp2 = file2.name();
+        Serial.println(temp2);
+        if (file2.isDirectory()) {
+          File root3 = SD.open(temp2);
+          File file3 = root3.openNextFile();
+          root = file2;
+          path = file2.name();
+          while (file3) {
+            String temp3 = file3.name();
+            Serial.println(temp3);
+            if (file3.isDirectory()) {
+              File root4 = SD.open(temp3);
+              File file4 = root4.openNextFile();
+              root = file3;
+              path = file3.name();
+              while (file4) {
+                if (file4.isDirectory()) { }
+                else { // root4
+                  //root = file4;
+                  String temp4 = file4.name();
+                  Serial.println(temp4);
+                  if (temp4.indexOf(words) != -1){ 
+                    //Serial.println("Audio:");
+                    //Serial.println(temp);
+                    //Serial.println("temp.indexOf(words):");
+                    //Serial.println(temp.indexOf(words));
+                    if (temp4.endsWith(".mp3") or temp4.endsWith(".wav") or temp4.endsWith(".flac") or temp4.endsWith(".wma")) {
+                      Serial.println("Acheiii, o arquivo é...");
+                      Serial.println(temp4);
+                      //strcpy(temp,filen); 
+                      PlayAudio(temp4.c_str());
+                    }
+                  }
+                }
+              file4 = root4.openNextFile();
+              }
+            }
+            else { // root3
+              //root = file3;
+              //Serial.println(temp);
+              if (temp3.indexOf(words) != -1){ 
+                //Serial.println("Audio:");
+                //Serial.println(temp);
+                //Serial.println("temp.indexOf(words):");
+                //Serial.println(temp.indexOf(words));
+                if (temp3.endsWith(".mp3") or temp3.endsWith(".wav") or temp3.endsWith(".flac") or temp3.endsWith(".wma")) {
+                  Serial.println("Acheiii, o arquivo é...");
+                  Serial.println(temp3);
+                  //strcpy(temp,filen); 
+                  PlayAudio(temp3.c_str());
+                }
+              }
+            }
+            file3 = root3.openNextFile();
+              }    
+            }
+            else { // root2
+              //root = file2;
+              if (temp2.indexOf(words) != -1){ 
+                //Serial.println("Audio:");
+                //Serial.println(temp);
+                //Serial.println("temp.indexOf(words):");
+                //Serial.println(temp.indexOf(words));
+                if (temp2.endsWith(".mp3") or temp2.endsWith(".wav") or temp2.endsWith(".flac") or temp2.endsWith(".wma")) {
+                  Serial.println("Acheiii, o arquivo é...");
+                  Serial.println(temp2);
+                  //strcpy(temp,filen); 
+                  PlayAudio(temp2.c_str());
+                }
+              }
+          }
+      file2 = root2.openNextFile();
+      }
+    }
+    else { // root1
+      //root = file1;
+      //Serial.println(temp);
+      if (temp1.indexOf(words) != -1){ 
+        //Serial.println("Audio:");
+        //Serial.println(temp);
+        //Serial.println("temp.indexOf(words):");
+        //Serial.println(temp.indexOf(words));
+        if (temp1.endsWith(".mp3") or temp1.endsWith(".wav") or temp1.endsWith(".flac") or temp1.endsWith(".wma")) {
+          Serial.println("Acheiii, o arquivo é...");
+          Serial.println(temp1);
+          //strcpy(temp,filen); 
+          PlayAudio(temp1.c_str());
+        }
+      }
+    }
+  file1 = root1.openNextFile();
+  }
+  file1.close();
+  esp_restart();
+  // alguma variável pra indicar que foi ou não encontrado algum arquivo e som para reiniciar app.
+
+
+  //char filen3[filen2.length() + 1];
   //filen3 = filen2.c_str(); //incompatible types in assignment of 'const char*' to 'char [50]'
-  strcpy(filen3,filen2.c_str()); 
-  PlayAudio(filen3);
+  //strcpy(filen3,filen2.c_str()); 
+  //PlayAudio(filen3);
 
 } // End of app MP3 Player
+
+
 
 
 
@@ -1865,8 +2334,9 @@ void setup()
 {
   Serial.begin(115200); delay(500); printf("\n\n\nStart\n\n");// DEBUG ONLY
 
+  randomSeed(analogRead(0));
   
-  Serial.println(ESP.getFreeHeap());
+  //Serial.println(ESP.getFreeHeap());
   //heap_caps_get_free_size();
 
   disableCore0WDT();
@@ -1906,15 +2376,11 @@ void setup()
   esp_register_shutdown_handler(shutdownHandler);
 
   //updateDateTime();
-
   //heap_caps_get_free_size();
-
-  // audio signal ready
-  //m_soundGenerator         m_soundGen;
-  
-  //m_soundGen.playSound(SineWaveformGenerator(), 158, 300);  //Re#
+  //m_soundGen.playSound(SineWaveformGenerator(), 158, 300);  //Re# No audio before PCEmulator please!
   //m_soundGen.clear();
   //m_soundGen.playSound(SineWaveformGenerator(), 163, 300);  //Mi
+
   
   // Monitor or Audio?
   fabgl::StringList list;
@@ -1955,12 +2421,14 @@ void loop()
   if (audioMode == false) {
     fabgl::StringList list;
     list.append("PCEmulator"); //0
-    list.append("ChatterBox");
+    list.append("Wi-Fi Config"); //1
     list.append("File Browser");
     list.append("JPG View");
     list.append("Web Radios");
     list.append("Audio Player");
     list.append("Wifi Safe");
+    list.append("ChatterBox");
+    list.append("Restart");
 
     list.select(0, true);
     //int s = ibox.menu("Applications list", "Click on an item", &list);
@@ -1970,15 +2438,14 @@ void loop()
       //m_soundGenerator     m_soundGen2;
       //m_soundGen2.clear();
       //m_soundGen.clear();
+      //m_soundGen.detach(SineWaveformGenerator);
+      //m_soundGen.play(false);
+      //m_soundGen.play(true);
+      //delay(500);
       PCEmulator();
     }
     if (s == 1) {
-      //Initialise SPIFFS:
-      if(!SPIFFS.begin()){
-        Serial.println("SPIFFS Mount Failed");
-        return;
-      }  
-      ChatterBox();
+      checkWiFi();
     }
     if (s == 2) {
       //rootWindow()->frameStyle().backgroundColor = RGB888(0, 0, 64);
@@ -2009,8 +2476,15 @@ void loop()
       AudioPlayer();
     }
     if (s == 6) WifiSafe();
-    //if (s == 7) 
-    //if (s == 8) 
+    if (s == 7) {
+      //Initialise SPIFFS:
+      if(!SPIFFS.begin()){
+        Serial.println("SPIFFS Mount Failed");
+        return;
+      }  
+      ChatterBox();
+    }
+    if (s == 8) esp_restart();
     //if (s == 9) 
   }
   
@@ -2018,24 +2492,41 @@ void loop()
     //m_soundGenerator         m_soundGen;
     //m_soundGen.clear();
     delay(100);
-    m_soundGen.playSound(SineWaveformGenerator(), 233, 200);  // Y OK!
-    m_soundGen.playSound(SineWaveformGenerator(), 411, 200);  // es
+    //m_soundGen.playSound(SineWaveformGenerator(), 233, 200);  // Y OK!
+    //m_soundGen.playSound(SineWaveformGenerator(), 411, 200);  // es
+    //m_soundGen.playSound(SineWaveformGenerator(), 262, 200);  // Y 
+    //m_soundGen.playSound(SineWaveformGenerator(), 330, 200);  // E
+    //m_soundGen.playSound(SineWaveformGenerator(), 392, 400); //  S
+    m_soundGen.playSound(SineWaveformGenerator(), 262, 200);  // Dó 
     // take a keypress
     Serial.println("take a keypress");
     int scode = PS2Controller::keyboard()->getNextScancode();
     Serial.println(scode);
     
     if (scode == 22) { // 1 WebRádios
+      m_soundGen.playSound(SineWaveformGenerator(), 494, 200);  // SI
+      m_soundGen.playSound(SineWaveformGenerator(), 494, 200);  // SI
       WebRadios();
     }
     else if (scode == 30) { // 2 Chat server
+      m_soundGen.playSound(SineWaveformGenerator(), 440, 200);  // la
+      m_soundGen.playSound(SineWaveformGenerator(), 440, 200);  // la
       ChatterBox();
     }
     else if (scode == 38) { // 3 Music Maker()
+      m_soundGen.playSound(SineWaveformGenerator(), 392, 200);  // sol
+      m_soundGen.playSound(SineWaveformGenerator(), 392, 200);  // sol
       MusicMaker();
     }
     else if (scode == 37) { // 4 timer
+      m_soundGen.playSound(SineWaveformGenerator(), 349, 200);  // fa
+      m_soundGen.playSound(SineWaveformGenerator(), 349, 200);  // fa
       TimerApp();
+    }
+    else if (scode == 46) { // 5 Audio Player
+      m_soundGen.playSound(SineWaveformGenerator(), 330, 200);  // mi
+      m_soundGen.playSound(SineWaveformGenerator(), 330, 200);  // mi
+      AudioPlayer();
     }
     
   }
