@@ -23,6 +23,7 @@ Apps:
 - Web Radios (Online Radios from many countrys);
 - Audio Player (play .mp3, .wav, etc. from SD);
 - Wi-fi Safe (test security of wifi);
+- Commodore VIC-20 emulator.
 
 **With Audio:**
 1) Web Radios
