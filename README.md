@@ -16,13 +16,14 @@ The computer built using this code has a much lower processing capacity than wha
 Apps:
 
 **With Display:**
-- PCEmulator (IBM PC/XT emulator with CGA and Hercules graphics);
+- PCEmulator (IBM PC/XT emulator with CGA and Hercules graphics, RAM 640Kb);
 - ChatterBox (Horizontal chat server);
 - File Browser;
-- Jpg View (see images from SD card);
+- Jpg View (see images from SD card. 400x300p., 64 colors maximum);
 - Web Radios (Online Radios from many countrys);
 - Audio Player (play .mp3, .wav, etc. from SD);
 - Wi-fi Safe (test security of wifi);
+- Commodore VIC-20 Emulator (Does not open .TAP and .d64 files, only PAL).
 
 **With Audio:**
 1) Web Radios
@@ -30,16 +31,17 @@ Apps:
 3) Audio Maker
 4) Timer
 5) Audio Player (play .mp3, .wav, etc. from SD);
+6) Frequency generator (under development)
 
 See the wiki for limitations and how to use this system.
 
 The system is being designed to work even if part of the hardware is unavailable, thus avoiding the production of electronic waste in the event of a component failure.
 What works without...
-- microSD card: ChatterBox, Web Radios, Wi-fi Safe, Audio Maker,
-- Sound output: Wi-fi Safe, File Browser, Jpg View, PCEmulator,
-- Wi-Fi: Audio Player, File Browser, Jpg View, PCEmulator, Audio Maker,
-- Mouse: PCEmulator, File Browser, Jpg View, PCEmulator, Audio Player, Timer, Audio Maker,
-- Keyboard: File Browser, ChatterBox, Wi-fi Safe,
+- microSD card: ChatterBox, Web Radios, Wi-fi Safe, Audio Maker, VIC-20 Emulator
+- Sound output: Wi-fi Safe, File Browser, Jpg View, PCEmulator, VIC-20 Emulator
+- Wi-Fi: Audio Player, File Browser, Jpg View, PCEmulator, Audio Maker, VIC-20 Emulator, 
+- Mouse: PCEmulator, File Browser, Jpg View, Audio Player, Timer, Audio Maker, VIC-20 Emulator, 
+- Keyboard: File Browser, ChatterBox, Wi-fi Safe, VIC-20 Emulator, 
 - PSRAM: ChatterBox, Wi-fi Safe, File Browser, Timer, 
 - VGA output: ChatterBox, Web Radios, Audio Maker, Audio Player, Timer, 
 
@@ -50,8 +52,8 @@ Disks for the PCEmulator:
 https://drive.google.com/drive/folders/1OFRNx3wDCHZ4ajmrT9v_o90OhCe7HoOJ?usp=share_link
 
 Used libs:
-FabGL by Fabrizio Di Vittorio version 1.0.9 https://github.com/fdivitto/FabGL/releases/tag/v1.0.9
-TJpg_Decoder by Bodmer version 0.0.2 https://github.com/Bodmer/TJpg_Decoder/releases/tag/0.0.2
-ESP32-audioI2S por Wolle https://github.com/schreibfaul1/ESP32-audioI2S
+- FabGL by Fabrizio Di Vittorio version 1.0.9 https://github.com/fdivitto/FabGL/releases/tag/v1.0.9
+- TJpg_Decoder by Bodmer version 0.0.2 https://github.com/Bodmer/TJpg_Decoder/releases/tag/0.0.2
+- ESP32-audioI2S por Wolle https://github.com/schreibfaul1/ESP32-audioI2S
 And
-Board arduino-esp32 by espressif version 1.0.6 https://github.com/espressif/arduino-esp32/releases/tag/1.0.6
+- Board arduino-esp32 by espressif version 1.0.6 https://github.com/espressif/arduino-esp32/releases/tag/1.0.6
