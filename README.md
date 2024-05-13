@@ -19,11 +19,11 @@ Apps:
 - PCEmulator (IBM PC/XT emulator with CGA and Hercules graphics);
 - ChatterBox (Horizontal chat server);
 - File Browser;
-- Jpg View (see images from SD card);
+- Jpg View (see images from SD card) (only 400x300, 64 colors max.;
 - Web Radios (Online Radios from many countrys);
 - Audio Player (play .mp3, .wav, etc. from SD);
 - Wi-fi Safe (test security of wifi);
-- Commodore VIC-20 emulator.
+- Commodore VIC-20 emulator (Only PAL, only crt and prg files).
 
 **With Audio:**
 1) Web Radios
