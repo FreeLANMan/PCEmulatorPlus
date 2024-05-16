@@ -3,7 +3,7 @@ The PCEmulator by Fabrizio Di Vittorio plus applications for a more complete sys
 
 - What is this for?
   
-This code allows you to use a microcontroller-based board (Esp32) as if it were a computer. This is accomplished by combining a 16-bit PC emulator (8086-CGA/Hercules) with more modern applications (MP3 player, JPG image viewer, microSD card file manager, etc.).
+This code allows you to use a microcontroller-based board (Esp32) as if it were a computer. This is accomplished by combining a 16-bit PC emulator (8086-CGA/Hercules), a Commodore VIC-20 emulator, with more modern applications (MP3 player, JPG image viewer, microSD card file manager, etc.).
 
 - What are the advantages?
   
