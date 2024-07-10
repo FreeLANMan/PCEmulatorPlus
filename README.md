@@ -19,7 +19,7 @@ Apps:
 - PCEmulator (IBM PC/XT emulator with CGA and Hercules graphics);
 - ChatterBox (Horizontal chat server);
 - File Browser;
-- Jpg View (see images from SD card) (only 400x300, 64 colors max.;
+- Jpg View (see images from SD card) (only 400x300, 64 colors max.);
 - Web Radios (Online Radios from many countrys);
 - Audio Player (play .mp3, .wav, etc. from SD);
 - Wi-fi Safe (test security of wifi);
@@ -51,8 +51,9 @@ Disks for the PCEmulator:
 https://drive.google.com/drive/folders/1OFRNx3wDCHZ4ajmrT9v_o90OhCe7HoOJ?usp=share_link
 
 Used libs:
-FabGL by Fabrizio Di Vittorio version 1.0.9 https://github.com/fdivitto/FabGL/releases/tag/v1.0.9
-TJpg_Decoder by Bodmer version 0.0.2 https://github.com/Bodmer/TJpg_Decoder/releases/tag/0.0.2
-ESP32-audioI2S por Wolle https://github.com/schreibfaul1/ESP32-audioI2S
+- FabGL by Fabrizio Di Vittorio version 1.0.9 https://github.com/fdivitto/FabGL/releases/tag/v1.0.9
+- TJpg_Decoder by Bodmer version 0.0.2 https://github.com/Bodmer/TJpg_Decoder/releases/tag/0.0.2
+- ESP32-audioI2S por Wolle https://github.com/schreibfaul1/ESP32-audioI2S
 And
-Board arduino-esp32 by espressif version 1.0.6 https://github.com/espressif/arduino-esp32/releases/tag/1.0.6
+- Board arduino-esp32 by espressif version 1.0.6 https://github.com/espressif/arduino-esp32/releases/tag/1.0.6
+- Arduino IDE version 1.8.13 https://github.com/arduino/Arduino/releases/tag/1.8.13 
