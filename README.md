@@ -36,11 +36,11 @@ See the wiki for limitations and how to use this system.
 
 The system is being designed to work even if part of the hardware is unavailable, thus avoiding the production of electronic waste in the event of a component failure.
 What works without...
-- microSD card: ChatterBox, Web Radios, Wi-fi Safe, Audio Maker,
-- Sound output: Wi-fi Safe, File Browser, Jpg View, PCEmulator,
-- Wi-Fi: Audio Player, File Browser, Jpg View, PCEmulator, Audio Maker,
-- Mouse: PCEmulator, File Browser, Jpg View, PCEmulator, Audio Player, Timer, Audio Maker,
-- Keyboard: File Browser, ChatterBox, Wi-fi Safe,
+- microSD card: ChatterBox, Web Radios, Wi-fi Safe, Audio Maker, VIC-20 emulator
+- Sound output: Wi-fi Safe, File Browser, Jpg View, PCEmulator, VIC-20 emulator (some apps)
+- Wi-Fi: Audio Player, File Browser, Jpg View, PCEmulator, Audio Maker, VIC-20 emulator
+- Mouse: PCEmulator, File Browser, Jpg View, Audio Player, Timer, Audio Maker, VIC-20 emulator
+- Keyboard: File Browser, ChatterBox, Wi-fi Safe, VIC-20 emulator (some apps)
 - PSRAM: ChatterBox, Wi-fi Safe, File Browser, Timer, 
 - VGA output: ChatterBox, Web Radios, Audio Maker, Audio Player, Timer, 
 
